@@ -44,10 +44,11 @@ i.e. in =`= in order to avoid something like ~""""file""""~ if
 Certain things unfortunately *have* to go into quotation marks. As
 seen in the =one= example above, the simple =..= is not allowed. 
 
-Also if you need assignment via =:= or ===, put it also in quotation marks.
+Also if you need assignment via =:= or ===, put it also in quotation
+marks. Say you wish to compile a Nim program, you might want to do:
 #+BEGIN_SRC nim
 shell:
-  run "--out:test.txt" myProg
+  nim c "--out:noTest" test.nim
 #+END_SRC
 
 In general, if in doubt you can just write strings or triple string
