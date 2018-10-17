@@ -29,3 +29,10 @@ shell:
 In general, if in doubt you can just write strings or triple string
 (to pass a ="= to the shell).
 
+** Debugging
+In order to see what's going on, you can either compile your program
+with the =-d:debugShell= flag, which will then echo the rewritten
+commands during compilation. 
+Alternatively in order to avoid calling the commands immediately, you
+may use the =shellEcho= macro instead. It simply echoes the commands
+that would otherwise be run.
