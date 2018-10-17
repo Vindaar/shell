@@ -3,36 +3,63 @@ import osproc
 import strutils
 import elnim
 
+type
+  InfixKind = enum
+    ifSlash = "/"
+    ifGreater = ">"
+    ifSmaller = "<"
+    ifDash = "-"
+    ifPipe = "|"
+    ifAnd = "&&"
+
 proc iterateTree(cmds: NimNode): string
 
+proc replaceInfixKind(ifKind: InfixKind): string =
+  case ifKind
+  of ifSlash:
+    result = $ifSlash
+  else:
+    result = " " & $ifKind & " "
+
 proc handleInfix(n: NimNode): NimNode =
+  ## reorder the tree of the infix
+  ## TODO: we could just use `unpackInfix` ?
   result = nnkIdentDefs.newTree()
   result.add n[1]
   result.add n[0]
   result.add n[2]
 
+proc handleDotExpr(n: NimNode): string =
+  ## string value for a dot expr
+  result = n[0].strVal & "." & n[1].strVal
+
 proc recurseInfix(n: NimNode): string =
-  let inTree = handleInfix(n)
-  if inTree[0].len > 0:
-    result = iterateTree(nnkIdentDefs.newTree(inTree[0]))
-  else:
-    result = inTree[0].strVal
-  for i in 1 ..< inTree.len:
-    if inTree[i].kind == nnkIdent:
-      result.add inTree[i].strVal
+  ## replace infix tree by an identDefs tree in correct order
+  ## and a string node in place of the previous "infixed" symbol
+  var m = copy(n)
+  let ifKind = parseEnum[InfixKind](m[0].strVal)
+  # replace the infix symbol
+  m[0] = newLit(replaceInfixKind(ifKind))
+  let inTree = handleInfix(m)
+  for el in inTree:
+    result.add iterateTree(nnkIdentDefs.newTree(el))
 
 proc handlePrefix(n: NimNode): string =
+  ## handle `nnkPrefix`
   var m = copy(n)
   result = m[0].strVal
   m.del(0)
   result.add iterateTree(m)
 
 proc handleVarTy(n: NimNode): string =
+  ## varTy replaces our `out` with a `var`. Replace manually
   result = "out"
   if n.len > 0:
     result.add " " & iterateTree(nnkIdentDefs.newTree(n[0]))
 
 proc iterateTree(cmds: NimNode): string =
+  ## main proc which iterates over tree and assigns assigns the correct
+  ## strings to `subCmds` depending on NimNode kind
   var subCmds: seq[string]
   for cmd in cmds:
     case cmd.kind

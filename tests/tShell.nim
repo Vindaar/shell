@@ -70,6 +70,24 @@ suite "[shell]":
     do:
       "./reconstruction Run123 --out=\"test.h5\""
 
+  test "[shell] command with a redirect":
+    checkShell:
+      echo """"test file"""" > test.txt
+    do:
+      "echo \"test file\" > test.txt"
+
+  test "[shell] command with a pipe":
+    checkShell:
+      cat test.txt | grep """"file""""
+    do:
+      "cat test.txt | grep \"file\""
+
+  #test "[shell] command with a manual &&":
+  #  checkShell:
+  #    discard
+  #  do:
+  #    discard
+
   test "[shell] view output":
     shellEcho:
       ./reconstruction Run123 --out test.h5
