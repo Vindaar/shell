@@ -19,6 +19,11 @@ execShellCmd("rm bar")
 where =execShell= is a proc around =execCmdEx= (not around
 =execShellCmd= in order to get the output and return value).
 
+*Important note:* due to the implementation at the moment, each
+command is run individually! If you e.g. need to change directories in
+order to run a command, concat the commands yourself! Support for
+multiple commands will be implemented soon.
+
 Most simple commands work as expected. If you need assignment via =:=
 or ===, put that part of the command into a string.
 #+BEGIN_SRC nim
