@@ -1,0 +1,31 @@
+* shell
+
+A mini Nim DSL to execute shell commands more conveniently.
+
+** Usage
+With this macro you can simply write 
+#+BEGIN_SRC nim
+shell:
+  touch foo
+  mv foo bar
+  rm bar
+#+END_SRC
+which is then rewritten to:
+#+BEGIN_SRC nim
+execShellCmd("touch foo")
+execShellCmd("mv foo bar")
+execShellCmd("rm bar")
+#+END_SRC
+where =execShell= is a proc around =execCmdEx= (not around
+=execShellCmd= in order to get the output and return value).
+
+Most simple commands work as expected. If you need assignment via =:=
+or ===, put that part of the command into a string.
+#+BEGIN_SRC nim
+shell:
+  run "--out:test.txt" myProg
+#+END_SRC
+
+In general, if in doubt you can just write strings or triple string
+(to pass a ="= to the shell).
+
