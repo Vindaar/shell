@@ -82,11 +82,23 @@ suite "[shell]":
     do:
       "cat test.txt | grep \"file\""
 
-  #test "[shell] command with a manual &&":
-  #  checkShell:
-  #    discard
-  #  do:
-  #    discard
+  test "[shell] command with a manual &&":
+    checkShell:
+      mkdir foo && rmdir foo
+    do:
+      "mkdir foo && rmdir foo"
+
+  test "[shell] command with literal quotations marks":
+    checkShell:
+      echo `Hallo`
+    do:
+      "echo \"Hallo\""
+
+  test "[shell] command with accent quotes for the shell":
+    checkShell:
+      "a=`echo Hallo`"
+    do:
+      "a=`echo Hallo`"
 
   test "[shell] view output":
     shellEcho:
@@ -98,6 +110,8 @@ suite "[shell]":
       touch test.txt
       cp test.txt abc.txt
       rm abc.txt
+    check true
+
 
   test "[shell] multiple commands in one shell call":
     checkShell:
