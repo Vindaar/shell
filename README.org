@@ -12,17 +12,26 @@ shell:
 #+END_SRC
 which is then rewritten to:
 #+BEGIN_SRC nim
-execShellCmd("touch foo")
-execShellCmd("mv foo bar")
-execShellCmd("rm bar")
+execShell("touch foo")
+execShell("mv foo bar")
+execShell("rm bar")
 #+END_SRC
 where =execShell= is a proc around =execCmdEx= (not around
 =execShellCmd= in order to get the output and return value).
 
-*Important note:* due to the implementation at the moment, each
-command is run individually! If you e.g. need to change directories in
-order to run a command, concat the commands yourself! Support for
-multiple commands will be implemented soon.
+*Note:* By default each line in the =shell= macro will be handled by a
+different call to =execShell=. If you need several commands, which
+depend on the state of the previous, you may do so via the =one=
+command like so:
+#+BEGIN_SRC nim
+shell:
+  one:
+    mkdir foo
+    cd foo
+    touch bar
+    cd ..
+    rm foo/bar
+#+END_SRC
 
 Most simple commands work as expected. If you need assignment via =:=
 or ===, put that part of the command into a string.
@@ -33,6 +42,10 @@ shell:
 
 In general, if in doubt you can just write strings or triple string
 (to pass a ="= to the shell).
+
+*TODO:* add support for raw string literals via accented quotes,
+i.e. in =`= in order to avoid something like =""""file""""= if
+="file"= is supposed to be handed to the shell.
 
 ** Debugging
 In order to see what's going on, you can either compile your program
