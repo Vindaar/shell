@@ -1,7 +1,6 @@
 import macros
 import osproc
 import strutils
-import elnim
 
 type
   InfixKind = enum
@@ -87,11 +86,11 @@ proc iterateTree(cmds: NimNode): string =
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
         ". Consider putting offending part into \" \".")
 
-  result = subCmds.mapconcat()
+  result = subCmds.join(" ")
 
 proc concatCmds(cmds: seq[string]): string =
   ## concat by `&&`
-  result = cmds.mapconcat(sep = " && ")
+  result = cmds.join(" && ")
 
 proc execShell*(cmd: string) =
   ## wrapper around `execCmdEx`, which calls the commands and handles
