@@ -67,7 +67,7 @@ shell:
     echo $a
 #+END_SRC
 
-Also if you need assignment via =:= or ===, put it also in quotation
+Also if you need assignment via ':' or '=', put it also in quotation
 marks. Say you wish to compile a Nim program, you might want to do:
 #+BEGIN_SRC nim
 shell:
