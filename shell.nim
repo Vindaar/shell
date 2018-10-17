@@ -1,5 +1,6 @@
 import macros
-import osproc
+when not defined(NimScript):
+  import osproc
 import strutils
 
 type
@@ -96,12 +97,15 @@ proc execShell*(cmd: string) =
   ## wrapper around `execCmdEx`, which calls the commands and handles
   ## return values
   echo cmd
-  let (outp, errC) = execCmdEx(cmd)
-  if errC != 0:
-    echo "Error calling ", cmd, " with code ", errC
-  if outp.len > 0:
-    echo "Output for cmd: ", cmd
-    echo "\t", outp
+  when not defined(NimScript):
+    let (outp, errC) = execCmdEx(cmd)
+    if errC != 0:
+      echo "Error calling ", cmd, " with code ", errC
+    if outp.len > 0:
+      echo "Output for cmd: ", cmd
+      echo "\t", outp
+  else:
+    exec(cmd)
 
 proc genShellCmds(cmds: NimNode): seq[string] =
   ## the proc that actually generates the shell commands

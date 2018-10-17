@@ -39,6 +39,11 @@ Most simple things should work as expected. See below for some known quirks.
 i.e. in =`= in order to avoid something like ~""""file""""~ if
 ~"file"~ is supposed to be handed to the shell.
 
+** NimScript
+
+This macro can also be used in NimScript! Instead of `execCmdEx` the
+`nimscript.exec` is used.
+
 ** Known issues
 
 Certain things unfortunately *have* to go into quotation marks. As
