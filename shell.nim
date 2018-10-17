@@ -6,6 +6,7 @@ import elnim
 type
   InfixKind = enum
     ifSlash = "/"
+    ifBackSlash = "\\"
     ifGreater = ">"
     ifSmaller = "<"
     ifDash = "-"
@@ -16,8 +17,8 @@ proc iterateTree(cmds: NimNode): string
 
 proc replaceInfixKind(ifKind: InfixKind): string =
   case ifKind
-  of ifSlash:
-    result = $ifSlash
+  of ifSlash, ifBackSlash:
+    result = $ifKind
   else:
     result = " " & $ifKind & " "
 
