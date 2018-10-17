@@ -36,8 +36,15 @@ shell:
 Most simple things should work as expected. See below for some known quirks.
 
 *TODO:* add support for raw string literals via accented quotes,
-i.e. in =`= in order to avoid something like ~""""file""""~ if
-~"file"~ is supposed to be handed to the shell.
+i.e. in =`= in order to avoid something like 
+#+BEGIN_SRC sh
+""""file""""
+#+END_SRC
+if
+#+BEGIN_SRC sh
+"file"
+#+END_SRC
+is supposed to be handed to the shell.
 
 ** NimScript
 
