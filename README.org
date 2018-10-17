@@ -45,8 +45,8 @@ will be rewritten to
 execShell("echo \"hello\"")
 #+END_SRC
 Note: this has the downside of disallowing =`= as a token to be handed
-to the shell. If you want to the shell's =`=, you need to put that command
-into a string.
+to the shell. If you want to use the shell's =`=, you need to put the
+appropriate command into quotation marks.
 
 ** NimScript
 
