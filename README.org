@@ -35,16 +35,18 @@ shell:
 
 Most simple things should work as expected. See below for some known quirks.
 
-*TODO:* add support for raw string literals via accented quotes,
-i.e. in =`= in order to avoid something like 
-#+BEGIN_SRC sh
-""""file""""
+If you want to hand a literal string to the shell, you may do so by
+putting it into accented quotes:
+#+BEGIN_SRC nim
+echo `hello`
 #+END_SRC
-if
-#+BEGIN_SRC sh
-"file"
+will be rewritten to
+#+BEGIN_SRC nim
+execShell("echo \"hello\"")
 #+END_SRC
-is supposed to be handed to the shell.
+Note: this has the downside of disallowing =`= as a token to be handed
+to the shell. If you want to the shell's =`=, you need to put that command
+into a string.
 
 ** NimScript
 
