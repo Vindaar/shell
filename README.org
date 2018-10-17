@@ -41,8 +41,8 @@ i.e. in =`= in order to avoid something like ~""""file""""~ if
 
 ** NimScript
 
-This macro can also be used in NimScript! Instead of `execCmdEx` the
-`nimscript.exec` is used.
+This macro can also be used in NimScript! Instead of =execCmdEx= the
+=nimscript.exec= is used.
 
 ** Known issues
 
