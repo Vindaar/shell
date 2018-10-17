@@ -97,5 +97,14 @@ suite "[shell]":
     shell:
       touch test.txt
       cp test.txt abc.txt
-      rm test.txt
-      rm test.txt
+      rm abc.txt
+
+  test "[shell] multiple commands in one shell call":
+    checkShell:
+      one:
+        mkdir foo
+        cd foo
+        touch bar
+        cd ".."
+    do:
+      "mkdir foo && cd foo && touch bar && cd .."

@@ -73,17 +73,24 @@ proc iterateTree(cmds: NimNode): string =
       # TODO: still handled via `repr`!
       subCmds.add cmd.repr
     of nnkStrLit, nnkTripleStrLit:
-      #echo "Is str lit ", cmd.repr
       subCmds.add cmd.strVal
     of nnkVarTy:
       subCmds.add handleVarTy(cmd)
     of nnkInfix:
       subCmds.add recurseInfix(cmd)
+    of nnkAccQuoted:
+      # TODO: add support for raw string literal in accented quotes. If one wants
+      # a `"` on a symbol in the shell, it should be possible within `` ` ``.
+      subCmds.add cmd[0].strVal
     else:
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
         ". Consider putting offending part into \" \".")
 
   result = subCmds.mapconcat()
+
+proc concatCmds(cmds: seq[string]): string =
+  ## concat by `&&`
+  result = cmds.mapconcat(sep = " && ")
 
 proc execShell*(cmd: string) =
   ## wrapper around `execCmdEx`, which calls the commands and handles
@@ -102,9 +109,15 @@ proc genShellCmds(cmds: NimNode): seq[string] =
   # iterate over all commands in the command list
   for cmd in cmds:
     case cmd.kind
+    of nnkCall:
+      if eqIdent(cmd[0], "one"):
+        # in this case call this proc on content
+        let oneCmd = genShellCmds(cmd[1])
+        # and concat them to a valid concat of shell calls
+        result.add concatCmds(oneCmd)
     of nnkCommand:
       result.add iterateTree(cmd)
-    of nnkStrLit:
+    of nnkIdent, nnkStrLit, nnkTripleStrLit:
       result.add cmd.strVal
     of nnkPrefix:
       result.add iterateTree(nnkIdentDefs.newTree(cmd))
