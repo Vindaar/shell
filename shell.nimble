@@ -9,6 +9,7 @@ license       = "MIT"
 # Dependencies
 
 requires "nim >= 0.19.0"
+requires "https://github.com/kaushalmodi/elnim#head"
 
 task test, "executes the tests":
   exec "nim c -d:debugShell -r tests/tShell.nim"
