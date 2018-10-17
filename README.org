@@ -58,6 +58,15 @@ This macro can also be used in NimScript! Instead of =execCmdEx= the
 Certain things unfortunately *have* to go into quotation marks. As
 seen in the =one= example above, the simple =..= is not allowed. 
 
+Variable assignments in the shell need to be handed via a string
+literal:
+#+BEGIN_SRC nim
+shell:
+  one:
+    "a=`echo hello`"
+    echo $a
+#+END_SRC
+
 Also if you need assignment via =:= or ===, put it also in quotation
 marks. Say you wish to compile a Nim program, you might want to do:
 #+BEGIN_SRC nim
