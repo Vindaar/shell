@@ -58,6 +58,12 @@ proc handleVarTy(n: NimNode): string =
   if n.len > 0:
     result.add " " & iterateTree(nnkIdentDefs.newTree(n[0]))
 
+proc rawString(n: NimNode): string =
+  ## converts an identifier that is given in accented quotes to
+  ## a raw string literal in quotation marks
+  expectKind n, nnkAccQuoted
+  result = "\"" & n[0].strVal & "\""
+
 proc iterateTree(cmds: NimNode): string =
   ## main proc which iterates over tree and assigns assigns the correct
   ## strings to `subCmds` depending on NimNode kind
@@ -82,7 +88,7 @@ proc iterateTree(cmds: NimNode): string =
     of nnkAccQuoted:
       # TODO: add support for raw string literal in accented quotes. If one wants
       # a `"` on a symbol in the shell, it should be possible within `` ` ``.
-      subCmds.add cmd[0].strVal
+      subCmds.add rawString(cmd)
     else:
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
         ". Consider putting offending part into \" \".")
