@@ -159,7 +159,7 @@ proc genShellCmds(cmds: NimNode): seq[string] =
       result.add iterateTree(cmd)
     of nnkIdent, nnkStrLit, nnkTripleStrLit:
       result.add cmd.strVal
-    of nnkPrefix:
+    of nnkPrefix, nnkAccQuoted:
       result.add iterateTree(nnkIdentDefs.newTree(cmd))
     else:
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
