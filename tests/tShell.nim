@@ -122,3 +122,10 @@ suite "[shell]":
         cd ".."
     do:
       "mkdir foo && cd foo && touch bar && cd .."
+
+  test "[shell] quoting a Nim symbol":
+    let name = "Vindaar"
+    checkShell:
+      echo "Hello from" `$name`
+    do:
+      &"echo Hello from {name}"

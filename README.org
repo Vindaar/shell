@@ -35,6 +35,16 @@ shell:
 
 Most simple things should work as expected. See below for some known quirks.
 
+** Accented quotes
+
+Accented quotes allow you to do two different things. Raw strings and
+Nim symbol quoting.
+
+Note: this has the downside of disallowing =`= as a token to be handed
+to the shell. If you want to use the shell's =`=, you need to put the
+appropriate command into quotation marks.
+
+*** Raw strings
 If you want to hand a literal string to the shell, you may do so by
 putting it into accented quotes:
 #+BEGIN_SRC nim
@@ -44,9 +54,35 @@ will be rewritten to
 #+BEGIN_SRC nim
 execShell("echo \"hello\"")
 #+END_SRC
-Note: this has the downside of disallowing =`= as a token to be handed
-to the shell. If you want to use the shell's =`=, you need to put the
-appropriate command into quotation marks.
+
+For a string consisting of multiple commands / words, put quotation
+marks around it:
+#+BEGIN_SRC sh
+echo `"Hello from Nim!"`
+#+END_SRC
+which will then also be rewritten to:
+#+BEGIN_SRC nim
+execShell("echo \"Hello from Nim!\"")
+#+END_SRC
+
+*** Nim symbol quoting
+
+Another important feature to make this library useful is quoting of
+Nim symbols. In order to support this, put the Nim symbol into
+accented quotes and in addition prefix it by =$= as:
+#+BEGIN_SRC nim
+let name = "Vindaar"
+shell:
+  echo Hello from `$name`
+#+END_SRC 
+which will perform the call:
+#+BEGIN_SRC nim
+execShell(&"echo Hello from {name}!")
+#+END_SRC
+and after the call to =$=:
+#+BEGIN_SRC nim
+execShell("echo Hello from Vindaar!")
+#+END_SRC
 
 ** NimScript
 

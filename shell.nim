@@ -1,7 +1,8 @@
 import macros
 when not defined(NimScript):
   import osproc
-import strutils
+import strutils, strformat
+export strformat
 
 type
   InfixKind = enum
@@ -64,11 +65,22 @@ proc rawString(n: NimNode): string =
   expectKind n, nnkAccQuoted
   result = "\"" & n[0].strVal & "\""
 
+proc nimSymbol(n: NimNode): string =
+  ## converts the identifier given in accented quotes to a Nim symbol
+  ## quoted in `{}` using strformat
+  expectKind n, nnkAccQuoted
+  if eqIdent(n[0], "$"):
+    result = "{" & n[1].strVal & "}"
+  else:
+    error("Unsupported symbol in accented quotes: " & $n.repr)
+
 proc iterateTree(cmds: NimNode): string =
   ## main proc which iterates over tree and assigns assigns the correct
   ## strings to `subCmds` depending on NimNode kind
   var subCmds: seq[string]
+  var nimSymbolInserted = false
   for cmd in cmds:
+    echo "cmd kind ", cmd.kind, " for ", cmd.treerepr
     case cmd.kind
     of nnkCommand:
       subCmds.add iterateTree(cmd)
@@ -86,9 +98,16 @@ proc iterateTree(cmds: NimNode): string =
     of nnkInfix:
       subCmds.add recurseInfix(cmd)
     of nnkAccQuoted:
-      # TODO: add support for raw string literal in accented quotes. If one wants
-      # a `"` on a symbol in the shell, it should be possible within `` ` ``.
-      subCmds.add rawString(cmd)
+      # handle accented quotes. Allows to either have the content be put into
+      # a raw string literal, or if prefixed by `$` assumed to be a Nim symbol
+      case cmd.len
+      of 1:
+        subCmds.add rawString(cmd)
+      of 2:
+        subCmds.add nimSymbol(cmd)
+        nimSymbolInserted = true
+      else:
+        error("Unsupported quoting: " & $cmd.kind & " for command " & cmd.repr)
     else:
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
         ". Consider putting offending part into \" \".")
@@ -135,6 +154,15 @@ proc genShellCmds(cmds: NimNode): seq[string] =
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
         ". Consider putting offending part into \" \".")
 
+proc nilOrQuote(cmd: string): NimNode =
+  ## either returns a string literal node if the given command does
+  ## not contain curly brackets (indicating a Nim symbol is quoted)
+  ## or prefix a `&` to call strformat
+  if "{" in cmd and "}" in cmd:
+    result = nnkPrefix.newTree(ident"&", newLit(cmd))
+  else:
+    result = newLit(cmd)
+
 macro shell*(cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into " "
@@ -146,8 +174,9 @@ macro shell*(cmds: untyped): untyped =
   let shCmds = genShellCmds(cmds)
 
   for cmd in shCmds:
+    let qCmd = nilOrQuote(cmd)
     result.add quote do:
-      execShell(`cmd`)
+      execShell(`qCmd`)
 
   when defined(debugShell):
     echo result.repr
@@ -158,7 +187,8 @@ macro shellEcho*(cmds: untyped): untyped =
   expectKind cmds, nnkStmtList
   let shCmds = genShellCmds(cmds)
   for cmd in shCmds:
-    echo cmd
+    let qCmd = nilOrQuote(cmd)
+    echo qCmd.repr
 
 macro checkShell*(cmds: untyped, exp: untyped): untyped =
   ## a wrapper around the shell macro, which can calls `unittest.check` to
@@ -168,7 +198,7 @@ macro checkShell*(cmds: untyped, exp: untyped): untyped =
   let shCmds = genShellCmds(cmds)
 
   if exp.kind == nnkStmtList:
-    let checkCommand = shCmds[0]
+    let checkCommand = nilOrQuote(shCmds[0])
     result = quote do:
       check `checkCommand` == `exp[0]`
 
