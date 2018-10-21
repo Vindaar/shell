@@ -120,9 +120,9 @@ proc iterateTree(cmds: NimNode): string =
 
   result = subCmds.join(" ")
 
-proc concatCmds(cmds: seq[string]): string =
-  ## concat by `&&`
-  result = cmds.join(" && ")
+proc concatCmds(cmds: seq[string], sep = " && "): string =
+  ## concat commands to single string, by default via `&&`
+  result = cmds.join(sep)
 
 proc execShell*(cmd: string) =
   ## wrapper around `execCmdEx`, which calls the commands and handles
@@ -150,6 +150,11 @@ proc genShellCmds(cmds: NimNode): seq[string] =
         let oneCmd = genShellCmds(cmd[1])
         # and concat them to a valid concat of shell calls
         result.add concatCmds(oneCmd)
+      elif eqIdent(cmd[0], "pipe"):
+        # in this case call this proc on content
+        let pipeCmd = genShellCmds(cmd[1])
+        # and concat them to a valid string of piped commands
+        result.add concatCmds(pipeCmd, sep = " | ")
     of nnkCommand:
       result.add iterateTree(cmd)
     of nnkIdent, nnkStrLit, nnkTripleStrLit:

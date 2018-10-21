@@ -19,7 +19,12 @@ execShell("rm bar")
 where =execShell= is a proc around =execCmdEx= (not around
 =execShellCmd= in order to get the output and return value).
 
-*Note:* By default each line in the =shell= macro will be handled by a
+Most simple things should work as expected. See below for some known
+quirks.
+
+** ~one~ and ~pipe~
+
+By default each line in the =shell= macro will be handled by a
 different call to =execShell=. If you need several commands, which
 depend on the state of the previous, you may do so via the =one=
 command like so:
@@ -33,7 +38,34 @@ shell:
     rm foo/bar
 #+END_SRC
 
-Most simple things should work as expected. See below for some known quirks.
+Similar to the =one= command, the =pipe= command exists. This concats
+the command via the shell pipe =|=:
+#+BEGIN_SRC nim
+shell:
+  pipe:
+    cat test.txt
+    head -3
+#+END_SRC
+will produce:
+#+BEGIN_SRC nim
+execShell("cat test.txt | head -3")
+#+END_SRC
+
+Both of these can even be combined!
+#+BEGIN_SRC nim
+shell:
+  one:
+    mkdir foo
+    pushd foo
+    echo "Hallo\nWorld" > test.txt
+    pipe:
+      cat test.txt
+      grep H
+    popd
+    rm foo/test.txt
+    rmdir foo
+#+END_SRC
+will work just as expected, echoing =Hallo= in the shell.
 
 ** Accented quotes
 

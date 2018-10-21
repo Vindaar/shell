@@ -129,6 +129,15 @@ suite "[shell]":
     do:
       "mkdir foo && cd foo && touch bar && cd .."
 
+  test "[shell] combine several commands via pipe":
+    checkShell:
+      pipe:
+        cat tests/tShell.nim
+        grep test
+        head -3
+    do:
+      "cat tests/tShell.nim | grep test | head -3"
+
   test "[shell] quoting a Nim symbol":
     let name = "Vindaar"
     checkShell:
