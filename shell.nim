@@ -97,6 +97,8 @@ proc iterateTree(cmds: NimNode): string =
       subCmds.add handleDotExpr(cmd)
     of nnkStrLit, nnkTripleStrLit:
       subCmds.add cmd.strVal
+    of nnkIntLit, nnkFloatLit:
+      subCmds.add cmd.repr
     of nnkVarTy:
       subCmds.add handleVarTy(cmd)
     of nnkInfix:
