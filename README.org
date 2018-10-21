@@ -111,7 +111,7 @@ which will perform the call:
 #+BEGIN_SRC nim
 execShell(&"echo Hello from {name}!")
 #+END_SRC
-and after the call to =$=:
+and after the call to =strformat.&=:
 #+BEGIN_SRC nim
 execShell("echo Hello from Vindaar!")
 #+END_SRC
