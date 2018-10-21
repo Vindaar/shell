@@ -184,11 +184,19 @@ macro shell*(cmds: untyped): untyped =
 macro shellEcho*(cmds: untyped): untyped =
   ## a helper macro around the proc that generates the shell commands
   ## to check whether the commands are as expected
+  ## It echoes the commands at compile time (the representation of the
+  ## command) and also the resulting string (taking into account potential)
+  ## Nim symbol quoting at run time
   expectKind cmds, nnkStmtList
+  result = newStmtList()
   let shCmds = genShellCmds(cmds)
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
+    # echo representation at compile time
     echo qCmd.repr
+    # and echo
+    result.add quote do:
+      echo `qCmd`
 
 macro checkShell*(cmds: untyped, exp: untyped): untyped =
   ## a wrapper around the shell macro, which can calls `unittest.check` to
