@@ -33,7 +33,12 @@ proc handleInfix(n: NimNode): NimNode =
 
 proc handleDotExpr(n: NimNode): string =
   ## string value for a dot expr
-  result = n[0].strVal & "." & n[1].strVal
+  var stmts = nnkIdentDefs.newTree()
+  stmts.add n[0]
+  stmts.add ident(".")
+  stmts.add n[1]
+  for el in stmts:
+    result.add iterateTree(nnkIdentDefs.newTree(el))
 
 proc recurseInfix(n: NimNode): string =
   ## replace infix tree by an identDefs tree in correct order
@@ -89,8 +94,7 @@ proc iterateTree(cmds: NimNode): string =
     of nnkIdent:
       subCmds.add cmd.strVal
     of nnkDotExpr:
-      # TODO: still handled via `repr`!
-      subCmds.add cmd.repr
+      subCmds.add handleDotExpr(cmd)
     of nnkStrLit, nnkTripleStrLit:
       subCmds.add cmd.strVal
     of nnkVarTy:
