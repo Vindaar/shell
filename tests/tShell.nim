@@ -129,3 +129,10 @@ suite "[shell]":
       echo "Hello from" `$name`
     do:
       &"echo Hello from {name}"
+
+  test "[shell] quoting a Nim symbol and appending to it":
+    let dir = "testDir"
+    checkShell:
+      tar -czf `$dir`.tar.gz
+    do:
+      &"tar -czf {dir}.tar.gz"
