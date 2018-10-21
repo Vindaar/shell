@@ -88,11 +88,17 @@ suite "[shell]":
     do:
       "mkdir foo && rmdir foo"
 
-  test "[shell] command with literal quotations marks":
+  test "[shell] command with literal string from single word":
     checkShell:
       echo `Hallo`
     do:
       "echo \"Hallo\""
+
+  test "[shell] command with literal string of multiple words":
+    checkShell:
+      echo `"Hello World!"`
+    do:
+      "echo \"Hello World!\""
 
   test "[shell] command with accent quotes for the shell":
     checkShell:
