@@ -127,6 +127,7 @@ shell call of the syntax presented above to a Nim variable, such as:
 var name = ""
 shellAssign:
   name = echo Araq
+assert name == "Araq"
 #+END_SRC
 Here the left =name= is the Nim variable (note: this is an exception
 of the Nim symbol quoting mentioned above!), whereas the right hand
