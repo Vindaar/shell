@@ -85,7 +85,6 @@ proc iterateTree(cmds: NimNode): string =
   var subCmds: seq[string]
   var nimSymbolInserted = false
   for cmd in cmds:
-    echo "cmd kind ", cmd.kind, " for ", cmd.treerepr
     case cmd.kind
     of nnkCommand:
       subCmds.add iterateTree(cmd)
