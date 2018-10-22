@@ -136,10 +136,11 @@ call, by being rewritten to:
 #+BEGIN_SRC nim
 var name = ""
 name = asgnShell("echo Araq")
+assert name == "Araq"
 #+END_SRC
-After the call =name == "Araq"= will hold. =asgnShell= is internally
-called by =execShell= mentioned above. =asgnShell= itself performs the
-calls to =execCmdEx= (or =exec= for NimScript).
+=asgnShell= is internally called by =execShell= mentioned
+above. =asgnShell= itself performs the calls to =execCmdEx= (or =exec=
+for NimScript).
 
 (*): a single statement is not entirely precise, because the =one= and
 =pipe= operators can be used in combination with the assignment! For
