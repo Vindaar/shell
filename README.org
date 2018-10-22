@@ -116,6 +116,44 @@ and after the call to =strformat.&=:
 execShell("echo Hello from Vindaar!")
 #+END_SRC
 
+** Assignment of results to Nim variables
+
+Also useful is assignment of the result of a shell call to a Nim
+string. This can be done with the =shellAssign= macro. It is a little
+special compared to the =shell= and =shellEcho= macros. It only
+supports a single statement (*), which needs to be an assignment of a
+shell call of the syntax presented above to a Nim variable, such as:
+#+BEGIN_SRC nim
+var name = ""
+shellAssign:
+  name = echo Araq
+#+END_SRC
+Here the left =name= is the Nim variable (note: this is an exception
+of the Nim symbol quoting mentioned above!), whereas the right hand
+side is an arbitrary shell call, in this case a simple call to
+=echo=. The Nim variable will be assigned the result of the shell
+call, by being rewritten to:
+#+BEGIN_SRC nim
+var name = ""
+name = asgnShell("echo Araq")
+#+END_SRC
+After the call =name == "Araq"= will hold. =asgnShell= is internally
+called by =execShell= mentioned above. =asgnShell= itself performs the
+calls to =execCmdEx= (or =exec= for NimScript).
+
+(*): a single statement is not entirely precise, because the =one= and
+=pipe= operators can be used in combination with the assignment! For
+example the following is also possible:
+#+BEGIN_SRC nim
+var res = ""
+shellAssign:
+  res = pipe:
+    seq 0 1 10
+    tail -3
+assert res == "8\n9\n10"
+#+END_SRC
+
+
 ** NimScript
 
 This macro can also be used in NimScript! Instead of =execCmdEx= the

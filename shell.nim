@@ -123,19 +123,26 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
 
-proc execShell*(cmd: string) =
-  ## wrapper around `execCmdEx`, which calls the commands and handles
-  ## return values
-  echo cmd
+proc asgnShell*(cmd: string): string =
+  ## wrapper around `execCmdEx`, which returns the output of the shell call
+  ## as a string (stripped of `\n`)
   when not defined(NimScript):
     let (outp, errC) = execCmdEx(cmd)
     if errC != 0:
       echo "Error calling ", cmd, " with code ", errC
-    if outp.len > 0:
-      echo "Output for cmd: ", cmd
-      echo "\t", outp
+    result = outp
   else:
-    exec(cmd)
+    exec(cmd.splitWhitespace[0], cmd.splitWhitespace[1:^1], result)
+  result = result.strip(chars = {'\n'})
+
+proc execShell*(cmd: string) =
+  ## wrapper around `execCmdEx`, which calls the commands and handles
+  ## return values
+  echo cmd
+  let outp = asgnShell(cmd)
+  if outp.len > 0:
+    echo "Output for cmd: ", cmd
+    echo "\t", outp
 
 proc genShellCmds(cmds: NimNode): seq[string] =
   ## the proc that actually generates the shell commands
@@ -219,6 +226,24 @@ macro checkShell*(cmds: untyped, exp: untyped): untyped =
     let checkCommand = nilOrQuote(shCmds[0])
     result = quote do:
       check `checkCommand` == `exp[0]`
+
+  when defined(debugShell):
+    echo result.repr
+
+macro shellAssign*(cmd: untyped): untyped =
+  expectKind cmd, nnkStmtList
+  expectKind cmd[0], nnkAsgn
+  doAssert cmd[0].len == 2, "Only a single assignment is allowed!"
+
+  ## in this case assume node 0 is Nim identifier to which we wish
+  ## to assign value of rest of the nodes
+  let nimSym = cmd[0][0]
+  # node 1 is the shell call we make
+  let cmds = nnkIdentDefs.newTree(cmd[0][1])
+  let shCmd = genShellCmds(cmds)[0]
+
+  result = quote do:
+    `nimSym` = asgnShell(`shCmd`)
 
   when defined(debugShell):
     echo result.repr

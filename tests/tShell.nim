@@ -151,3 +151,17 @@ suite "[shell]":
       tar -czf `$dir`.tar.gz
     do:
       &"tar -czf {dir}.tar.gz"
+
+  test "[shellAssign] assigning output of a shell call to a Nim var":
+    var res = ""
+    shellAssign:
+      res = echo `hello`
+    check res == "hello"
+
+  test "[shellAssign] assigning output of a shell pipe to a Nim var":
+    var res = ""
+    shellAssign:
+      res = pipe:
+        seq 0 1 10
+        tail -3
+    check res == "8\n9\n10"
