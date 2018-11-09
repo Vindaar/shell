@@ -132,8 +132,7 @@ proc asgnShell*(cmd: string): string =
       echo "Error calling ", cmd, " with code ", errC
     result = outp
   else:
-    let args = cmd.splitWhitespace[1 .. ^1].concatCmds(sep = " ")
-    exec(cmd.splitWhitespace[0], args, result)
+    exec(cmd, "", result)
   result = result.strip(chars = {'\n'})
 
 proc execShell*(cmd: string) =
