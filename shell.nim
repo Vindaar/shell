@@ -132,7 +132,7 @@ proc asgnShell*(cmd: string): string =
       echo "Error calling ", cmd, " with code ", errC
     result = outp
   else:
-    exec(cmd, "", result)
+    result = staticExec(cmd, "", "")
   result = result.strip(chars = {'\n'})
 
 proc execShell*(cmd: string) =
