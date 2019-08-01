@@ -113,11 +113,10 @@ suite "[shell]":
 
   test "[shell] multiple commands":
     shell:
-      touch test.txt
-      cp test.txt abc.txt
-      rm abc.txt
+      touch test1234567890.txt
+      mv test1234567890.txt bar1234567890.txt
+      rm bar1234567890.txt
     check true
-
 
   test "[shell] multiple commands in one shell call":
     checkShell:
@@ -165,3 +164,18 @@ suite "[shell]":
         seq 0 1 10
         tail -3
     check res == "8\n9\n10"
+
+  test "[shell] real time output":
+    shell:
+      "for f in 1 2 3; do echo $f; sleep 1; done"
+
+  test "[shellVerbose] check for exit code of wrong command":
+    let res = shellVerbose:
+      thisCommandDoesNotExistOnYourSystemOrThisTestWillFail
+    check res[1] != 0
+
+  test "[shellVerbose] compare output of command using shellVerbose":
+    let res = shellVerbose:
+      echo "Hello world!"
+    check res[0] == "Hello world!"
+    check res[1] == 0

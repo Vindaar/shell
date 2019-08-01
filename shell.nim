@@ -287,9 +287,12 @@ macro checkShell*(cmds: untyped, exp: untyped): untyped =
 
   if exp.kind == nnkStmtList:
     let checkCommand = nilOrQuote(shCmds[0])
-    result = quote do:
-      check `checkCommand` == `exp[0]`
-
+    when not defined(NimScript):
+      result = quote do:
+        check `checkCommand` == `exp[0]`
+    else:
+      result = quote do:
+        doAssert `checkCommand` == `exp[0]`
   when defined(debugShell):
     echo result.repr
 
