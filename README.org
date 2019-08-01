@@ -1,4 +1,5 @@
 * shell
+[[https://travis-ci.com/Vindaar/shell][https://travis-ci.com/Vindaar/shell.svg?branch=master]]
 
 A mini Nim DSL to execute shell commands more conveniently.
 
@@ -10,14 +11,17 @@ shell:
   mv foo bar
   rm bar
 #+END_SRC
-which is then rewritten to:
+which is then rewritten to something equivalent to:
 #+BEGIN_SRC nim
 execShell("touch foo")
 execShell("mv foo bar")
 execShell("rm bar")
 #+END_SRC
-where =execShell= is a proc around =execCmdEx= (not around
-=execShellCmd= in order to get the output and return value).
+where =execShell= is a proc around =startProcess= for normal
+compilation and `gorgeEx` when using NimScript. 
+
+See [[Full expansion of the macro]] below for more details and how to read
+the exit code of executed commands.
 
 Most simple things should work as expected. See below for some known
 quirks.
@@ -184,6 +188,60 @@ shell:
 
 In general, if in doubt you can just write strings or triple string
 (to pass a ="= to the shell).
+
+** Full expansion of the macro
+
+As mentioned at the top of the README, the expansion shown is
+simplified (as a matter of fact it was as simple once, but has since
+become more complex).
+
+The full expansion of the first example is:
+#+BEGIN_SRC nim
+discard block:
+  var outputStr381052 = ""
+  var exitCode381051: int
+  let tmp381063 = execShell("touch foo")
+  if exitCode381051 ==
+      0:
+    outputStr381052 = outputStr381052 &
+        tmp381063[0]
+    exitCode381051 = tmp381063[1]
+  else:
+    echo "Skipped command `" & "touch foo" &
+        "` due to failure in previous command!"
+  let tmp381064 = execShell("mv foo bar")
+  if exitCode381051 ==
+      0:
+    outputStr381052 = outputStr381052 &
+        tmp381064[0]
+    exitCode381051 = tmp381064[1]
+  else:
+    echo "Skipped command `" & "mv foo bar" &
+        "` due to failure in previous command!"
+  let tmp381065 = execShell("rm bar")
+  if exitCode381051 ==
+      0:
+    outputStr381052 = outputStr381052 &
+        tmp381065[0]
+    exitCode381051 = tmp381065[1]
+  else:
+    echo "Skipped command `" & "rm bar" &
+        "` due to failure in previous command!"
+  (outputStr381052, exitCode381051)
+#+END_SRC
+
+As can be seen from the expansion above, successive commands are only
+run, if the exit code of the previous command was 0, while the output
+is appended to the previous command's output.
+
+The normal =shell= command discards the return value of the block. If
+you want to keep it, use the =shellVerbose= macro:
+#+BEGIN_SRC nim
+let res = shellVerbose:
+  someCommand
+#+END_SRC
+where =res= will be of type =tuple[output: string, exitCode: string]=
+according to the expansion above.
 
 ** Debugging
 In order to see what's going on, you can either compile your program

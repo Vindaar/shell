@@ -12,3 +12,5 @@ requires "nim >= 0.19.0"
 
 task test, "executes the tests":
   exec "nim c -d:debugShell -r tests/tShell.nim"
+  # execute using NimScript as well
+  exec "nim e -d:debugShell -r tests/tNimScript.nims"
