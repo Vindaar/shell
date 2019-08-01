@@ -1,6 +1,6 @@
 import macros
 when not defined(NimScript):
-  import osproc
+  import osproc, streams, os
 import strutils, strformat
 export strformat
 
@@ -123,26 +123,48 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
 
-proc asgnShell*(cmd: string): string =
+proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
-    let (outp, errC) = execCmdEx(cmd)
-    if errC != 0:
-      echo "Error calling ", cmd, " with code ", errC
-    result = outp
-  else:
-    result = staticExec(cmd, "", "")
-  result = result.strip(chars = {'\n'})
+    let pid = startProcess(cmd, options = {poEvalCommand})
+    let outStream = pid.outputStream
+    var line = ""
+    var res = ""
+    while pid.running:
+      try:
+        let streamRes = outStream.readLine(line)
+        if streamRes:
+          echo "shell> ", line
+          res = res & "\n" & line
+        else:
+          # should mean stream is finished, i.e. process stoped
+          sleep 10
+          doAssert not pid.running
+          break
+      except IOError, OSError:
+        # outstream died on us?
+        doAssert outStream.isNil
+        break
 
-proc execShell*(cmd: string) =
-  ## wrapper around `execCmdEx`, which calls the commands and handles
-  ## return values
-  echo cmd
-  let outp = asgnShell(cmd)
-  if outp.len > 0:
-    echo "Output for cmd: ", cmd
-    echo "\t", outp
+    let exitCode = pid.peekExitCode
+    pid.close()
+    result = (output: res, exitCode: exitCode)
+  else:
+    result = gorgeEx(cmd, "", "")
+  result[0] = result[0].strip(chars = {'\n'})
+
+proc execShell*(cmd: string): tuple[output: string, exitCode: int] =
+  ## wrapper around `asgnShell`, which calls the commands and handles
+  ## return values.
+  echo "shellCmd: ", cmd
+  result = asgnShell(cmd)
+  when defined(NimScript):
+    # output of child process is already echoed on the fly for non NimScript
+    # usage
+    if result[0].len > 0:
+      for line in splitLines(result[0]):
+        echo "shell> ", line
 
 proc genShellCmds(cmds: NimNode): seq[string] =
   ## the proc that actually generates the shell commands
@@ -180,23 +202,64 @@ proc nilOrQuote(cmd: string): NimNode =
   else:
     result = newLit(cmd)
 
-macro shell*(cmds: untyped): untyped =
+macro shellVerbose*(cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into " "
-  ## The command is echoed before it is run.
-  ## If there is output, the output is echoed.
-  ## If the return value of the command is non zero the error is echoed.
+  ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
+  ## If there is output, the output is echoed. Each successive line of the
+  ## output is prefixed by `shell> `.
+  ## If multiple commands are run in succession (i.e. multiple statements in
+  ## the macro body) and one command returns a non-zero exit code, the following
+  ## commands will not be run. Instead a warning message will be shown.
+  ## For usage with NimScript the output can only be echoed after the
+  ## call has finished.
+  ## The macro returns a tuple of:
+  ## - output: string <- output of the shell command to stdout
+  ## - exitCode: int <- the exit code as an integer
   expectKind cmds, nnkStmtList
   result = newStmtList()
   let shCmds = genShellCmds(cmds)
 
+  # we use two temporary variables. One to store total output of all commands
+  # and the other to store the last exitCode.
+  let exCodeSym = genSym(nskVar, "exitCode")
+  let outputSym = genSym(nskVar, "outputStr")
+  result.add quote do:
+    var `outputSym` = ""
+    var `exCodeSym`: int
+
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
     result.add quote do:
-      execShell(`qCmd`)
+      let tmp = execShell(`qCmd`)
+      # use the exit code to determine if next command should be run
+      if `exCodeSym` == 0:
+        `outputSym` = `outputSym` & tmp[0]
+        `exCodeSym` = tmp[1]
+      else:
+        echo "Skipped command `" & `qCmd` & "` due to failure in previous command!"
+
+  # put everything in a block and return the result
+  result = quote do:
+    block:
+      `result`
+      (`outputSym`, `exCodeSym`)
 
   when defined(debugShell):
     echo result.repr
+
+macro shell*(cmds: untyped): untyped =
+  ## a mini DSL to write shell commands in Nim. Some constructs are not
+  ## implemented. If in doubt, put (parts of) the command into " "
+  ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
+  ## If there is output, the output is echoed. Each successive line of the
+  ## output is prefixed by `shell> `.
+  ## For usage with NimScript the output can only be echoed after the
+  ## call has finished.
+  ## The exit code of the command is dropped. If you wish to inspect
+  ## the exit code, use `shellVerbose` above.
+  result = quote do:
+    discard shellVerbose(`cmds`)
 
 macro shellEcho*(cmds: untyped): untyped =
   ## a helper macro around the proc that generates the shell commands
@@ -243,7 +306,7 @@ macro shellAssign*(cmd: untyped): untyped =
   let shCmd = genShellCmds(cmds)[0]
 
   result = quote do:
-    `nimSym` = asgnShell(`shCmd`)
+    `nimSym` = asgnShell(`shCmd`)[0]
 
   when defined(debugShell):
     echo result.repr
