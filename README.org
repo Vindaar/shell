@@ -234,14 +234,14 @@ As can be seen from the expansion above, successive commands are only
 run, if the exit code of the previous command was 0, while the output
 is appended to the previous command's output.
 
-The normal =shell= command discard the return value of the block. If
+The normal =shell= command discards the return value of the block. If
 you want to keep it, use the =shellVerbose= macro:
 #+BEGIN_SRC nim
 let res = shellVerbose:
   someCommand
 #+END_SRC
-where =res= will be of type =tuple[output: string, exitCode: string]=.
-
+where =res= will be of type =tuple[output: string, exitCode: string]=
+according to the expansion above.
 
 ** Debugging
 In order to see what's going on, you can either compile your program
