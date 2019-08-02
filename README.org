@@ -1,5 +1,5 @@
 * shell
-[[https://travis-ci.com/Vindaar/shell][https://travis-ci.com/Vindaar/shell.svg?branch=master]]
+[[https://travis-ci.org/Vindaar/shell][https://travis-ci.org/Vindaar/shell.svg?branch=master]]
 
 A mini Nim DSL to execute shell commands more conveniently.
 
