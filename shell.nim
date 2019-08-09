@@ -185,7 +185,6 @@ proc genShellCmds(cmds: NimNode): seq[string] =
 
   # iterate over all commands in the command list
   for cmd in flatCmds:
-    echo "Cmd is: ", cmd.kind, " ", cmd.repr
     case cmd.kind
     of nnkCall:
       if eqIdent(cmd[0], "one"):
