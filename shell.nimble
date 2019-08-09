@@ -14,3 +14,8 @@ task test, "executes the tests":
   exec "nim c -d:debugShell -r tests/tShell.nim"
   # execute using NimScript as well
   exec "nim e -d:debugShell -r tests/tNimScript.nims"
+
+task travis, "executes the tests on travis":
+  exec "nim c -d:debugShell -d:travisCI -r tests/tShell.nim"
+  # execute using NimScript as well
+  exec "nim e -d:debugShell -d:travisCI -r tests/tNimScript.nims"
