@@ -179,3 +179,21 @@ suite "[shell]":
       echo "Hello world!"
     check res[0] == "Hello world!"
     check res[1] == 0
+
+  test "[shellVerbose] remove nested StmtLists":
+    var toContinue = true
+    template tc(cmd: untyped): untyped {.dirty.} =
+      if toContinue:
+        toContinue = cmd
+
+    template shellCheck(actions: untyped): untyped =
+      tc:
+        let res = shellVerbose:
+          actions
+        res[1] == 0
+
+    shellCheck:
+      one:
+        "f=hallo"
+        echo $f
+    check toContinue

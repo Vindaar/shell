@@ -166,11 +166,26 @@ proc execShell*(cmd: string): tuple[output: string, exitCode: int] =
       for line in splitLines(result[0]):
         echo "shell> ", line
 
+proc flattenCmds(cmds: NimNode): NimNode =
+  ## removes nested StmtLists, if any
+  case cmds.kind
+  of nnkStmtList:
+    if cmds.len == 1 and cmds[0].kind == nnkStmtList:
+      result = flattenCmds(cmds[0])
+    else:
+      result = cmds
+  else:
+    result = cmds
+
 proc genShellCmds(cmds: NimNode): seq[string] =
   ## the proc that actually generates the shell commands
   ## from the given statements
+  # first strip potential nested StmtLists from input
+  let flatCmds = flattenCmds(cmds)
+
   # iterate over all commands in the command list
-  for cmd in cmds:
+  for cmd in flatCmds:
+    echo "Cmd is: ", cmd.kind, " ", cmd.repr
     case cmd.kind
     of nnkCall:
       if eqIdent(cmd[0], "one"):

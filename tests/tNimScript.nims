@@ -142,4 +142,22 @@ block:
     "for f in 1 2 3; do echo $f; sleep 1; done"
   doAssert ret[0] == "1\n2\n3", "was " & $ret[0]
 
+block:
+  var toContinue = true
+  template tc(cmd: untyped): untyped {.dirty.} =
+    if toContinue:
+      toContinue = cmd
+
+  template shellCheck(actions: untyped): untyped =
+    tc:
+      let res = shellVerbose:
+        actions
+      res[1] == 0
+
+  shellCheck:
+    one:
+      "f=hallo"
+      echo $f
+  doAssert toContinue
+
 echo "All tests passed using NimScript!"
