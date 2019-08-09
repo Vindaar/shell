@@ -139,6 +139,7 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
           res = res & "\n" & line
         else:
           # should mean stream is finished, i.e. process stoped
+          echo "line was ", line.len
           sleep 10
           doAssert not pid.running
           break
@@ -146,7 +147,6 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
         # outstream died on us?
         doAssert outStream.isNil
         break
-
     let exitCode = pid.peekExitCode
     pid.close()
     result = (output: res, exitCode: exitCode)

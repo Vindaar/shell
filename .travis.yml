@@ -32,4 +32,4 @@ install:
 
 script:
   - nimble install -y
-  - nimble -y test
+  - nimble -y travis
