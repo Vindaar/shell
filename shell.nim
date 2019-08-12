@@ -148,6 +148,11 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
         doAssert outStream.isNil
         break
     let exitCode = pid.peekExitCode
+    if exitCode != 0:
+      # add error stream to output
+      let err = pid.errorStream
+      res.add err.readAll()
+      err.close()
     pid.close()
     result = (output: res, exitCode: exitCode)
   else:
