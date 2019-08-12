@@ -245,9 +245,9 @@ macro shellVerbose*(cmds: untyped): untyped =
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
     result.add quote do:
-      let tmp = execShell(`qCmd`)
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
+        let tmp = execShell(`qCmd`)
         `outputSym` = `outputSym` & tmp[0]
         `exCodeSym` = tmp[1]
       else:
