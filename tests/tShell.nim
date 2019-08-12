@@ -1,5 +1,6 @@
 import unittest
 import ../shell
+import strutils
 
 suite "[shell]":
 
@@ -199,3 +200,11 @@ suite "[shell]":
         "f=hallo"
         echo $f
     check toContinue
+
+  test "[shellVerbose] check commands are not run after failure":
+    let res = shellVerbose:
+      echo runBrokenCommand
+      thisCommandDoesNotExistOnYourSystemOrThisTestWillFail
+      echo Hello
+    check res[1] != 0
+    check res[0].startsWith("runBrokenCommand")

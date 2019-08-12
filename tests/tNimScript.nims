@@ -1,4 +1,5 @@
 import ../shell
+import strutils
 
 checkShell:
   cd "Analysis/ingrid"
@@ -160,5 +161,14 @@ block:
       "f=hallo"
       echo $f
   doAssert toContinue
+
+block:
+  let res = shellVerbose:
+    echo runBrokenCommand
+    thisCommandDoesNotExistOnYourSystemOrThisTestWillFail
+    echo Hello
+  doAssert res[1] != 0
+  echo res[0]
+  doAssert res[0].startsWith("runBrokenCommand")
 
 echo "All tests passed using NimScript!"
