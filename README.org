@@ -200,27 +200,27 @@ The full expansion of the first example is:
 discard block:
   var outputStr381052 = ""
   var exitCode381051: int
-  let tmp381063 = execShell("touch foo")
   if exitCode381051 ==
       0:
+    let tmp381063 = execShell("touch foo")
     outputStr381052 = outputStr381052 &
         tmp381063[0]
     exitCode381051 = tmp381063[1]
   else:
     echo "Skipped command `" & "touch foo" &
         "` due to failure in previous command!"
-  let tmp381064 = execShell("mv foo bar")
   if exitCode381051 ==
       0:
+    let tmp381064 = execShell("mv foo bar")
     outputStr381052 = outputStr381052 &
         tmp381064[0]
     exitCode381051 = tmp381064[1]
   else:
     echo "Skipped command `" & "mv foo bar" &
         "` due to failure in previous command!"
-  let tmp381065 = execShell("rm bar")
   if exitCode381051 ==
       0:
+    let tmp381065 = execShell("rm bar")
     outputStr381052 = outputStr381052 &
         tmp381065[0]
     exitCode381051 = tmp381065[1]
