@@ -18,7 +18,16 @@ execShell("mv foo bar")
 execShell("rm bar")
 #+END_SRC
 where =execShell= is a proc around =startProcess= for normal
-compilation and `gorgeEx` when using NimScript. 
+compilation and =gorgeEx= when using NimScript. 
+
+Note: When using =NimScript= the given command is prepended by
+#+BEGIN_SRC 
+&"cd {getCurrentDir()} && "
+#+END_SRC
+in order to switch the evaluation into the directory of the =shell=
+call. 
+The same is achieved on the compiled backend by the =poEvalCommand=
+argument to =startProcess=.
 
 See [[Full expansion of the macro]] below for more details and how to read
 the exit code of executed commands.

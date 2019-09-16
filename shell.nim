@@ -156,7 +156,9 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
     pid.close()
     result = (output: res, exitCode: exitCode)
   else:
-    result = gorgeEx(cmd, "", "")
+    # prepend the NimScript called command by current directory
+    let nscmd = &"cd {getCurrentDir()} && " & cmd
+    result = gorgeEx(nscmd, "", "")
   result[0] = result[0].strip(chars = {'\n'})
 
 proc execShell*(cmd: string): tuple[output: string, exitCode: int] =
