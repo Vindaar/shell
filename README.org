@@ -110,11 +110,6 @@ and after the call to =strformat.&=:
 execShell("echo Hello from Vindaar!")
 #+END_SRC
 
-For more complicated use cases interpolation with normal strings is
-required though.
-
-
-
 *** Appending to a Nim identifier
 
 Assuming we have a filename identifier and we want to convert some
@@ -207,6 +202,27 @@ doAssert ($outfile "image2") == &"{fname} image2" # <- with space, ident first
 single string literal (or something that is convertible to a string
 via the =stringify= proc) and a single Nim identifier! This
 restriction will maybe be removed in the future.
+
+This syntax also works for more complicated Nim expressions than a
+simple identifier:
+#+BEGIN_SRC nim
+const t = (a: "name", b: 5.5)
+doAssert ("--out="$(t.a))
+doAssert ("--out="$t.a)
+#+END_SRC
+both work. Of course =t= needn't be a tuple. It can also be an object
+or even a function call, like for instance extracting a filename
+within a call:
+#+BEGIN_SRC nim
+import os, shell
+let path = "/some/user/path/toAFile.txt"
+shell:
+  ./myBin ("--inputFile="$(path.extractFilename))
+#+END_SRC
+should produce:
+#+BEGIN_SRC sh
+./myBin --inputFile=toAFile.txt
+#+END_SRC
 
 ** Accented quotes
 

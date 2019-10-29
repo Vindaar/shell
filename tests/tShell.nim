@@ -205,6 +205,49 @@ suite "[shell]":
     do:
       &"./test --out {outname}"
 
+  test "[shell] quoting a Nim symbol with tuple fields":
+    const run = (name: "Run_240_181021-14-54", outName: "run_240.h5")
+    checkShell:
+      ./test "--in" ($run.name) "--out" ($(run.outName))
+    do:
+      &"./test --in {run.name} --out {run.outName}"
+
+  test "[shell] quoting a Nim symbol with tuple fields, appending to string":
+    const run = (name: "Run_240_181021-14-54", outName: "run_240.h5")
+    checkShell:
+      ./test ("--in="$(run.name)) ("--out="$(run.outName))
+    do:
+      &"./test --in={run.name} --out={run.outName}"
+
+  test "[shell] quoting a Nim symbol with tuple fields, appending to string without parens":
+    const run = (name: "Run_240_181021-14-54", outName: "run_240.h5")
+    checkShell:
+      ./test ("--in="$run.name) ("--out="$run.outName)
+    do:
+      &"./test --in={run.name} --out={run.outName}"
+
+  test "[shell] quoting a Nim expression with obj fields":
+    type
+      TestObj = object
+        name: string
+        val: float
+    let obj = TestObj(name: "test", val: 5.5)
+    checkShell:
+      ./test ("--in="$obj.name) ("--val="$(obj.val))
+    do:
+      &"./test --in={obj.name} --val={(obj.val)}"
+
+  test "[shell] quoting a Nim expression with proc call":
+    # sometimes calling a function on an identifier is useful, e.g. to extract
+    # a filename
+    proc extractFilename(s: string): string =
+      result = s[^11 .. ^1]
+    let path = "/some/user/path/toAFile.txt"
+    checkShell:
+      ./test ("--in="$(path.extractFilename))
+    do:
+      &"./test --in={path.extractFilename}"
+
   test "[shellAssign] assigning output of a shell call to a Nim var":
     var res = ""
     shellAssign:
