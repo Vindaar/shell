@@ -14,6 +14,7 @@ type
     ifPipe = "|"
     ifAnd = "&&"
 
+proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode): string
 
 proc replaceInfixKind(ifKind: InfixKind): string =
@@ -70,53 +71,132 @@ proc rawString(n: NimNode): string =
   expectKind n, nnkAccQuoted
   result = "\"" & n[0].strVal & "\""
 
-proc nimSymbol(n: NimNode): string =
+proc parensUnquotePrefix(n: NimNode): string =
+  ## For the new `()` Nim identifier quoting syntax handles the checks
+  ## for the appearance of `$` and converts to quoting via &{} macro.
+  # TODO: simplify, maybe combine parts with `stringify` again!
+  case n.kind
+  of nnkInfix:
+    # If `n` is `infix` it's probably something like
+    # `"--out=($myIdent)"`. Thus we reorder the infix and concat the
+    # unquoted identifier to the string literal
+    let fixed = n.handleInfix
+    if eqIdent(fixed[1], "$"):
+      expectKind fixed[1], nnkIdent
+      expectKind fixed[2], nnkIdent
+      result = stringify(fixed[0]) & "{" & fixed[2].strVal & "}"
+    else:
+      error("Unsupported symbol in parenthesis quote: " & $n.repr)
+  of nnkPrefix:
+    # If it's a prefix it's the usual `$` at the beginning of the `()`.
+    # However, if something follows right after the quoted idenfitier without
+    # a space, it'll be a
+    # - `nnkCallStrLit` for `($dir".tar.gz")` <- no space
+    # - `nnkCommand` for `("--out" $name)` <- with space
+    if eqIdent(n[0], "$"):
+      case n[1].kind
+      of nnkCallStrLit:
+        expectKind n[1][0], nnkIdent
+        result = "{" & n[1][0].strVal & "}" & stringify(n[1][1])
+      of nnkCommand:
+        expectKind n[1][0], nnkIdent
+        result = "{" & n[1][0].strVal & "}" & " " & stringify(n[1][1])
+      else:
+        result = "{" & n[1].strVal & "}"
+    else:
+      error("Unsupported symbol in parenthesis quote: " & $n.repr)
+  of nnkCommand:
+    result = stringify(n[0]) & " " & parensUnquotePrefix(n[1])
+  else:
+    error("Unsupported node kind " & $n.kind & " in `parensUnquotePrefix`: " &
+      n.repr)
+
+proc nimSymbol(n: NimNode, useParens: static bool): string =
   ## converts the identifier given in accented quotes to a Nim symbol
   ## quoted in `{}` using strformat
-  expectKind n, nnkAccQuoted
-  if eqIdent(n[0], "$"):
-    result = "{" & n[1].strVal & "}"
+  when declared(oldQuote):
+    expectKind n, nnkAccQuoted
+    if eqIdent(n[0], "$"):
+      result = "{" & n[1].strVal & "}"
+    else:
+      error("Unsupported symbol in accented quotes: " & $n.repr)
   else:
-    error("Unsupported symbol in accented quotes: " & $n.repr)
+    expectKind n, nnkPar
+    result = parensUnquotePrefix(n[0])
+
+proc handleCall(n: NimNode): string =
+  ## converts the given `NimNode` representing a call to a string. The call
+  ## corresponds to usage of `()`, thus a quoting of a nim identifier.
+  ## Specifically, this corresponds to the case in which some identifier
+  ## or string literal appears right before a quoted nim identifier, so that
+  ## the value of the quoted identifier is placed right after the first
+  ## argument.
+  ## Assuming `outname` defines a string with value `test.h5`, then:
+  ## Call
+  ##   StrLit "--out="
+  ##   Prefix
+  ##     Ident "$"
+  ##     Ident "outname"
+  ## -> "--out=test.h5"
+  expectKind n[1], nnkPrefix
+  result = stringify(n[0]) & parensUnquotePrefix(n[1])
+
+proc stringify(cmd: NimNode): string =
+  ## Handles the stringification of a single `NimNode` according to its
+  ## `NimNodeKind`.
+  echo "STRINGIFYING ", cmd.kind, " of value ", cmd.repr
+  case cmd.kind
+  of nnkCommand:
+    result = iterateTree(cmd)
+  of nnkCall:
+    # call may appear when quoting with `()` without space after previous
+    # element
+    result = handleCall(cmd)
+  of nnkPrefix:
+    result = handlePrefix(cmd)
+  of nnkIdent:
+    result = cmd.strVal
+  of nnkDotExpr:
+    result = handleDotExpr(cmd)
+  of nnkStrLit, nnkTripleStrLit, nnkRStrLit:
+    result = cmd.strVal
+  of nnkIntLit, nnkFloatLit:
+    result = cmd.repr
+  of nnkVarTy:
+    result = handleVarTy(cmd)
+  of nnkInfix:
+    result = recurseInfix(cmd)
+  of nnkAccQuoted:
+    # handle accented quotes. Allows to either have the content be put into
+    # a raw string literal, or if prefixed by `$` assumed to be a Nim symbol
+    case cmd.len
+    of 1:
+      result = rawString(cmd)
+    of 2:
+      when declared(oldQuote):
+        result = nimSymbol(cmd, useParens = false)
+      else:
+        error("API change: for quoting use ()! Compile with -d:oldQuote for grace period." &
+              "Offending command: " & cmd.repr)
+    else:
+      error("Unsupported quoting: " & $cmd.kind & " for command " & cmd.repr)
+  of nnkPar:
+    when not declared(oldQuote):
+      result = nimSymbol(cmd, useParens = true)
+    else:
+      error("Quoting via () only allowed if compiled without -d:oldQuote!" &
+        "Relevant command: " & cmd.repr)
+  else:
+    error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
+      ". Consider putting offending part into \" \".")
 
 proc iterateTree(cmds: NimNode): string =
   ## main proc which iterates over tree and assigns assigns the correct
   ## strings to `subCmds` depending on NimNode kind
   var subCmds: seq[string]
-  var nimSymbolInserted = false
+  echo cmds.treeRepr
   for cmd in cmds:
-    case cmd.kind
-    of nnkCommand:
-      subCmds.add iterateTree(cmd)
-    of nnkPrefix:
-      subCmds.add handlePrefix(cmd)
-    of nnkIdent:
-      subCmds.add cmd.strVal
-    of nnkDotExpr:
-      subCmds.add handleDotExpr(cmd)
-    of nnkStrLit, nnkTripleStrLit:
-      subCmds.add cmd.strVal
-    of nnkIntLit, nnkFloatLit:
-      subCmds.add cmd.repr
-    of nnkVarTy:
-      subCmds.add handleVarTy(cmd)
-    of nnkInfix:
-      subCmds.add recurseInfix(cmd)
-    of nnkAccQuoted:
-      # handle accented quotes. Allows to either have the content be put into
-      # a raw string literal, or if prefixed by `$` assumed to be a Nim symbol
-      case cmd.len
-      of 1:
-        subCmds.add rawString(cmd)
-      of 2:
-        subCmds.add nimSymbol(cmd)
-        nimSymbolInserted = true
-      else:
-        error("Unsupported quoting: " & $cmd.kind & " for command " & cmd.repr)
-    else:
-      error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
-        ". Consider putting offending part into \" \".")
-
+    subCmds.add stringify(cmd)
   result = subCmds.join(" ")
 
 proc concatCmds(cmds: seq[string], sep = " && "): string =

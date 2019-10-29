@@ -114,15 +114,84 @@ do:
 
 let name = "Vindaar"
 checkShell:
-  echo "Hello from" `$name`
+  echo "Hello from" ($name)
 do:
   &"echo Hello from {name}"
 
 let dir = "testDir"
 checkShell:
-  tar -czf `$dir`.tar.gz
+  tar -czf ($dir).tar.gz
 do:
   &"tar -czf {dir}.tar.gz"
+
+block:
+  # "[shell] quoting a Nim symbol and appending to it using dotExpr":
+  let dir = "testDir"
+  checkShell:
+    tar -czf ($dir).tar.gz
+  do:
+    &"tar -czf {dir}.tar.gz"
+
+block:
+  # "[shell] unintuitive: quoting a Nim symbol (), appending string":
+  ## This is a rather unintuitive side effect of the way the Nim parser works.
+  ## Unfortunately appending a string literal to a quote via `()` will result
+  ## in a space between the quoted identifier and the string literal.
+  ## See the test case below, which quotes everything via `()`.
+  let dir = "testDir"
+  checkShell:
+    tar -czf ($dir)".tar.gz"
+  do:
+    &"tar -czf {dir} .tar.gz"
+
+block:
+  # "[shell] quoting a Nim symbol () and appending string inside the ()":
+  let dir = "testDir"
+  checkShell:
+    tar -czf ($dir".tar.gz")
+  do:
+    &"tar -czf {dir}.tar.gz"
+
+block:
+  # "[shell] quoting a Nim symbol () and appending string inside the () with a space":
+  let dir = "testDir"
+  checkShell:
+    tar -czf ($dir "aFile")
+  do:
+    &"tar -czf {dir} aFile"
+
+
+block:
+  # "[shell] quoting a Nim symbol and appending it to a string without space":
+  let outname = "test.h5"
+  checkShell:
+    ./test "--out="($outname)
+  do:
+    &"./test --out={outname}"
+
+block:
+  # "[shell] quoting a Nim symbol and appending it within `()`":
+  let outname = "test.h5"
+  checkShell:
+    ./test ("--out="$outname)
+  do:
+    &"./test --out={outname}"
+
+block:
+  # "[shell] quoting a Nim symbol and appending it within `()` with a space":
+  let outname = "test.h5"
+  checkShell:
+    ./test ("--out" $outname)
+  do:
+    &"./test --out {outname}"
+
+block:
+  # "[shell] quoting a Nim symbol and appending it to a string with space":
+  let outname = "test.h5"
+  checkShell:
+    ./test "--out" ($outname)
+  do:
+    &"./test --out {outname}"
 
 block:
   var res = ""

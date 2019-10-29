@@ -3,7 +3,6 @@ import ../shell
 import strutils
 
 suite "[shell]":
-
   test "[shell] single cmd w/ StrLit":
     checkShell:
       cd "Analysis/ingrid"
@@ -141,16 +140,70 @@ suite "[shell]":
   test "[shell] quoting a Nim symbol":
     let name = "Vindaar"
     checkShell:
-      echo "Hello from" `$name`
+      echo "Hello from" ($name)
     do:
       &"echo Hello from {name}"
 
-  test "[shell] quoting a Nim symbol and appending to it":
+  test "[shell] quoting a Nim symbol and appending to it using dotExpr":
     let dir = "testDir"
     checkShell:
-      tar -czf `$dir`.tar.gz
+      tar -czf ($dir).tar.gz
     do:
       &"tar -czf {dir}.tar.gz"
+
+  test "[shell] unintuitive: quoting a Nim symbol (), appending string":
+    ## This is a rather unintuitive side effect of the way the Nim parser works.
+    ## Unfortunately appending a string literal to a quote via `()` will result
+    ## in a space between the quoted identifier and the string literal.
+    ## See the test case below, which quotes everything via `()`.
+    let dir = "testDir"
+    checkShell:
+      tar -czf ($dir)".tar.gz"
+    do:
+      &"tar -czf {dir} .tar.gz"
+
+  test "[shell] quoting a Nim symbol () and appending string inside the ()":
+    let dir = "testDir"
+    checkShell:
+      tar -czf ($dir".tar.gz")
+    do:
+      &"tar -czf {dir}.tar.gz"
+
+  test "[shell] quoting a Nim symbol () and appending string inside the () with a space":
+    let dir = "testDir"
+    checkShell:
+      tar -czf ($dir "aFile")
+    do:
+      &"tar -czf {dir} aFile"
+
+
+  test "[shell] quoting a Nim symbol and appending it to a string without space":
+    let outname = "test.h5"
+    checkShell:
+      ./test "--out="($outname)
+    do:
+      &"./test --out={outname}"
+
+  test "[shell] quoting a Nim symbol and appending it within `()`":
+    let outname = "test.h5"
+    checkShell:
+      ./test ("--out="$outname)
+    do:
+      &"./test --out={outname}"
+
+  test "[shell] quoting a Nim symbol and appending it within `()` with a space":
+    let outname = "test.h5"
+    checkShell:
+      ./test ("--out" $outname)
+    do:
+      &"./test --out {outname}"
+
+  test "[shell] quoting a Nim symbol and appending it to a string with space":
+    let outname = "test.h5"
+    checkShell:
+      ./test "--out" ($outname)
+    do:
+      &"./test --out {outname}"
 
   test "[shellAssign] assigning output of a shell call to a Nim var":
     var res = ""
