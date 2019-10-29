@@ -144,7 +144,6 @@ proc handleCall(n: NimNode): string =
 proc stringify(cmd: NimNode): string =
   ## Handles the stringification of a single `NimNode` according to its
   ## `NimNodeKind`.
-  echo "STRINGIFYING ", cmd.kind, " of value ", cmd.repr
   case cmd.kind
   of nnkCommand:
     result = iterateTree(cmd)
@@ -194,7 +193,6 @@ proc iterateTree(cmds: NimNode): string =
   ## main proc which iterates over tree and assigns assigns the correct
   ## strings to `subCmds` depending on NimNode kind
   var subCmds: seq[string]
-  echo cmds.treeRepr
   for cmd in cmds:
     subCmds.add stringify(cmd)
   result = subCmds.join(" ")
