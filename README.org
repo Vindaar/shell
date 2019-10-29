@@ -126,7 +126,7 @@ convert myimage.png myimage.jpg
 
 This can be done in several ways.
 
-1. Using dot expressions and no string literals:
+**** Using dot expressions and no string literals:
 #+BEGIN_SRC nim
 let fname = "myimage"
 shell:
@@ -146,7 +146,7 @@ convert myimage .png myimage .jpg
 #+END_SRC
 which is obviously not what one would expect.
 
-2. Using string literals:
+**** Using string literals:
 #+BEGIN_SRC nim
 let fname = "myimage"
 shell:
@@ -170,7 +170,7 @@ argument, which is must be given without a space like:
 
 In this case one of the following ways works:
 
-1. using =()= after a string literal:
+**** using =()= after a string literal:
 #+BEGIN_SRC nim
 let outfile = "myoutput.txt"
 shell:
@@ -180,7 +180,7 @@ If the =()= appears after the literal we can correctly generate the
 string without a space (in comparison to the case presented above when
 a string literal follows a =()=).
 
-2. For more predictable behavior, put the string literal also into
+**** For more predictable behavior, put the string literal also into
    =()=:
 #+BEGIN_SRC nim
 let outfile = "myoutput.txt"
