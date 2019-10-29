@@ -83,8 +83,7 @@ proc parensUnquotePrefix(n: NimNode): string =
     let fixed = n.handleInfix
     if eqIdent(fixed[1], "$"):
       expectKind fixed[1], nnkIdent
-      expectKind fixed[2], nnkIdent
-      result = stringify(fixed[0]) & "{" & fixed[2].strVal & "}"
+      result = stringify(fixed[0]) & "{" & fixed[2].repr & "}"
     else:
       error("Unsupported symbol in parenthesis quote: " & $n.repr)
   of nnkPrefix:
@@ -97,12 +96,13 @@ proc parensUnquotePrefix(n: NimNode): string =
       case n[1].kind
       of nnkCallStrLit:
         expectKind n[1][0], nnkIdent
-        result = "{" & n[1][0].strVal & "}" & stringify(n[1][1])
+        result = "{" & n[1][0].repr & "}" & stringify(n[1][1])
       of nnkCommand:
         expectKind n[1][0], nnkIdent
-        result = "{" & n[1][0].strVal & "}" & " " & stringify(n[1][1])
+        result = "{" & n[1][0].repr & "}" & " " & stringify(n[1][1])
       else:
-        result = "{" & n[1].strVal & "}"
+        echo n.treeRepr
+        result = "{" & n[1].repr & "}"
     else:
       error("Unsupported symbol in parenthesis quote: " & $n.repr)
   of nnkCommand:
