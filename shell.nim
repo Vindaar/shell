@@ -101,7 +101,6 @@ proc parensUnquotePrefix(n: NimNode): string =
         expectKind n[1][0], nnkIdent
         result = "{" & n[1][0].repr & "}" & " " & stringify(n[1][1])
       else:
-        echo n.treeRepr
         result = "{" & n[1].repr & "}"
     else:
       error("Unsupported symbol in parenthesis quote: " & $n.repr)
