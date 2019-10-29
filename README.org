@@ -80,10 +80,157 @@ shell:
 #+END_SRC
 will work just as expected, echoing =Hallo= in the shell.
 
+** Nim symbol quoting
+
+*NOTE:* In a previous version this was done via accented quotes
+=`=. For the old behavior compile with =-d:oldQuote=.
+
+Another important feature to make this library useful is quoting of
+Nim symbols. 
+
+This is handled via parenthesis =()= (if you need to run something in
+a subshell unfortunately that will have to be done with an explicit
+string now). Any tree in =()= is subject to quoting. That means if an
+identifier within =()= is preceded by a =$=, the symbol is
+unquoted. Note however that for the moment only a single variable may
+be quoted in each =()=.
+
+The simplest case would be:
+#+BEGIN_SRC nim
+let name = "Vindaar"
+shell:
+  echo Hello from ($name)
+#+END_SRC 
+which will perform the call:
+#+BEGIN_SRC nim
+execShell(&"echo Hello from {name}!")
+#+END_SRC
+and after the call to =strformat.&=:
+#+BEGIN_SRC nim
+execShell("echo Hello from Vindaar!")
+#+END_SRC
+
+*** Appending to a Nim identifier
+
+Assuming we have a filename identifier and we want to convert some
+image from =png= to =jpg= with image magick. The simplest command
+should look like:
+#+BEGIN_SRC sh
+convert myimage.png myimage.jpg
+#+END_SRC
+
+This can be done in several ways.
+
+**** Using dot expressions and no string literals:
+#+BEGIN_SRC nim
+let fname = "myimage"
+shell:
+  convert ($fname).png ($fname).jpg
+#+END_SRC 
+Note that this is a special case. Continuing after a =()= quote
+without literal strings will only work for dot expressions. For
+instance:
+#+BEGIN_SRC nim
+let fname = "myimage"
+shell:
+  convert ($fname)".png" ($fname)".jpg"
+#+END_SRC
+will wrongly be converted to:
+#+BEGIN_SRC sh
+convert myimage .png myimage .jpg
+#+END_SRC
+which is obviously not what one would expect.
+
+**** Using string literals:
+#+BEGIN_SRC nim
+let fname = "myimage"
+shell:
+  convert ($fname".pdf") ($fname".png")
+#+END_SRC
+In contrast to the wrong example shown above, this will work as
+expected.
+
+This is especially useful for cases without dot expressions after the
+quoted nim identifier.
+
+*** Appending a Nim identifier to a string literal
+
+The other example would be appending a Nim identifier to a literal
+string. For instance in case we have a filename, which we create at
+run time and we wish to hand it to some command which takes an
+argument, which is must be given without a space like:
+#+BEGIN_SRC sh
+./myBin input --out=output
+#+END_SRC
+
+In this case one of the following ways works:
+
+**** using =()= after a string literal:
+#+BEGIN_SRC nim
+let outfile = "myoutput.txt"
+shell:
+  ./myBin input "--out="($outfile)
+#+END_SRC
+If the =()= appears after the literal we can correctly generate the
+string without a space (in comparison to the case presented above when
+a string literal follows a =()=).
+
+**** For more predictable behavior, put the string literal also into
+   =()=:
+#+BEGIN_SRC nim
+let outfile = "myoutput.txt"
+shell:
+  ./myBin input ("--out="$outfile)
+#+END_SRC
+
+*** General remark on predictability
+
+If the most cohesive way is desired, which works in all use cases
+(with and without spaces) with the Nim identifier before and after a
+string literal, put everything into =()=. The =doAssert= below is to
+be understood in the context of the =shell= macro:
+#+BEGIN_SRC nim
+let outfile = "myoutput.txt"
+doAssert ("--out="$outfile) == &"--out={outfile}" # <- without space, ident after
+doAssert ("--out" $outfile) == &"--out {outfile}" # <- with space, ident after
+let fname = "myimage"
+doAssert ($outfile".jpg") == &"{fname}.jpg" # <- without space, ident first
+doAssert ($outfile "image2") == &"{fname} image2" # <- with space, ident first
+#+END_SRC
+
+*NOTE:* For the moment however, the =()= usage is restricted to a
+single string literal (or something that is convertible to a string
+via the =stringify= proc) and a single Nim identifier! This
+restriction will maybe be removed in the future.
+
+This syntax also works for more complicated Nim expressions than a
+simple identifier:
+#+BEGIN_SRC nim
+const t = (a: "name", b: 5.5)
+doAssert ("--out="$(t.a))
+doAssert ("--out="$t.a)
+#+END_SRC
+both work. Of course =t= needn't be a tuple. It can also be an object
+or even a function call, like for instance extracting a filename
+within a call:
+#+BEGIN_SRC nim
+import os, shell
+let path = "/some/user/path/toAFile.txt"
+shell:
+  ./myBin ("--inputFile="$(path.extractFilename))
+#+END_SRC
+should produce:
+#+BEGIN_SRC sh
+./myBin --inputFile=toAFile.txt
+#+END_SRC
+
 ** Accented quotes
 
-Accented quotes allow you to do two different things. Raw strings and
-Nim symbol quoting.
+*NOTE*: In a previous version accented quotes were also used to quote
+Nim identifiers. That use case is now handled via parentheses. For the
+old behavior compile with =-d:oldQuote=.
+
+Accented quotes allow you to hand raw strings.
 
 Note: this has the downside of disallowing =`= as a token to be handed
 to the shell. If you want to use the shell's =`=, you need to put the
@@ -110,24 +257,6 @@ which will then also be rewritten to:
 execShell("echo \"Hello from Nim!\"")
 #+END_SRC
 
-*** Nim symbol quoting
-
-Another important feature to make this library useful is quoting of
-Nim symbols. In order to support this, put the Nim symbol into
-accented quotes and in addition prefix it by =$= as:
-#+BEGIN_SRC nim
-let name = "Vindaar"
-shell:
-  echo Hello from `$name`
-#+END_SRC 
-which will perform the call:
-#+BEGIN_SRC nim
-execShell(&"echo Hello from {name}!")
-#+END_SRC
-and after the call to =strformat.&=:
-#+BEGIN_SRC nim
-execShell("echo Hello from Vindaar!")
-#+END_SRC
 
 ** Assignment of results to Nim variables
 
