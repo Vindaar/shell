@@ -185,20 +185,23 @@ shell:
 
 *** General remark on predictability
 
-If the most cohesive way is desired, which works in all use cases
-(with and without spaces) with the Nim identifier before and after a
-string literal, put everything into =()=. The =doAssert= below is to
-be understood in the context of the =shell= macro:
+*NOTE:* previously this section said to handle quoting + concatenation
+with strings both in the case of with and without space with =()= for
+the most predictable behavior. But that was a bad idea from my side!
+If you need spaces, simply put it outside the =()= and use a space!
+
+The =doAssert= below is to be understood in the context of the =shell=
+macro. To summarize the above then: 
 #+BEGIN_SRC nim
 let outfile = "myoutput.txt"
 doAssert ("--out="$outfile) == &"--out={outfile}" # <- without space, ident after
-doAssert ("--out" $outfile) == &"--out {outfile}" # <- with space, ident after
+doAssert "--out" ($outfile) == &"--out {outfile}" # <- with space, ident after
 let fname = "myimage"
 doAssert ($outfile".jpg") == &"{fname}.jpg" # <- without space, ident first
-doAssert ($outfile "image2") == &"{fname} image2" # <- with space, ident first
+doAssert ($outfile) "image2" == &"{outfile} image2" # <- without space, ident first
 #+END_SRC
 
-*NOTE:* For the moment however, the =()= usage is restricted to a
+*NOTE 2:* For the moment however, the =()= usage is restricted to a
 single string literal (or something that is convertible to a string
 via the =stringify= proc) and a single Nim identifier! This
 restriction will maybe be removed in the future.
