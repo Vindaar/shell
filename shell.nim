@@ -91,15 +91,12 @@ proc parensUnquotePrefix(n: NimNode): string =
     # However, if something follows right after the quoted idenfitier without
     # a space, it'll be a
     # - `nnkCallStrLit` for `($dir".tar.gz")` <- no space
-    # - `nnkCommand` for `("--out" $name)` <- with space
+    # - `nnkCommand` for ``($(someExpr)"someString")` <- no space
     if eqIdent(n[0], "$"):
       case n[1].kind
-      of nnkCallStrLit:
-        expectKind n[1][0], nnkIdent
+      of nnkCommand, nnkCallStrLit:
+        doAssert n[1][0].kind in {nnkIdent, nnkPar}
         result = "{" & n[1][0].repr & "}" & stringify(n[1][1])
-      of nnkCommand:
-        expectKind n[1][0], nnkIdent
-        result = "{" & n[1][0].repr & "}" & " " & stringify(n[1][1])
       else:
         result = "{" & n[1].repr & "}"
     else:

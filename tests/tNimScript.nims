@@ -153,13 +153,12 @@ block:
     &"tar -czf {dir}.tar.gz"
 
 block:
-  # "[shell] quoting a Nim symbol () and appending string inside the () with a space":
-  let dir = "testDir"
+  # "[shell] quoting a Nim expression () and appending string inside the ()":
+  let pdf = "test.pdf"
   checkShell:
-    tar -czf ($dir "aFile")
+    pdfcrop "--margins '5 5 5 5'" ($pdf) ($(pdf.replace(".pdf",""))"_cropped.pdf")
   do:
-    &"tar -czf {dir} aFile"
-
+    &"pdfcrop --margins '5 5 5 5' {pdf} {pdf.replace(\".pdf\",\"\")}_cropped.pdf"
 
 block:
   # "[shell] quoting a Nim symbol and appending it to a string without space":
@@ -179,6 +178,7 @@ block:
 
 block:
   # "[shell] quoting a Nim symbol and appending it within `()` with a space":
+  ## NOTE: while this works, it is not the recommended way for clarity!
   let outname = "test.h5"
   checkShell:
     ./test ("--out" $outname)
