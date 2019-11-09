@@ -242,6 +242,15 @@ block:
     &"./test --in={path.extractFilename}"
 
 block:
+  # "[shell] quoting a Nim expression without anything else":
+  let myCmd = "runMe"
+  checkShell:
+    ($myCmd)
+  do:
+    $myCmd
+
+
+block:
   var res = ""
   shellAssign:
     res = echo `hello`

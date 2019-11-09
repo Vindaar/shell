@@ -248,6 +248,13 @@ suite "[shell]":
     do:
       &"./test --in={path.extractFilename}"
 
+  test "[shell] quoting a Nim expression without anything else":
+    let myCmd = "runMe"
+    checkShell:
+      ($myCmd)
+    do:
+      $myCmd
+
   test "[shellAssign] assigning output of a shell call to a Nim var":
     var res = ""
     shellAssign:
