@@ -213,7 +213,6 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
           res = res & "\n" & line
         else:
           # should mean stream is finished, i.e. process stoped
-          echo "line was ", line.len
           sleep 10
           doAssert not pid.running
           break
