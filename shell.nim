@@ -19,6 +19,28 @@ type
     dokError
     dokOutput
 
+var globalDebugConfig: set[DebugOutputKind] = {
+  dokCommand,
+  dokError,
+  dokOutput
+}
+
+var globalConfigChanged: bool = false
+
+proc setShellDebugConfig(config: set[DebugOutputKind]): void =
+  globalDebugConfig = config
+  globalConfigChanged = true
+
+proc getShellDebugConfig*(): set[DebugOutputKind] =
+  ## Return configuration for debugging of the shell command execution
+  result = globalDebugConfig
+
+  if not globalConfigChanged:
+    when defined shellNoDebugOutput: result excl dokOutput
+    when defined shellNoDebugError: result excl dokError
+    when defined shellNoDebugCommand: result excl dokCommand
+
+
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode): string
 
@@ -202,16 +224,6 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
 
-proc getDebugConfiguration(): set[DebugOutputKind] =
-  ## Return configuration for debugging of the shell command execution
-  # TODO implement. Check for compile-time pragma, runtime
-  # configuration changes
-  {dokError}
-
-# IDEA it might be a good idea to provide compile-time configuration
-# for enabling/disabling additional shell debuging functionality.
-# Maybe provide `-d:shellDebugOutput` `-d:shellDebugError` and
-# `-d:shellDebugCommand`
 
 # NOTE Checking for key in set, calling function on each `asgnShell`
 # invokation might decrease performance.
@@ -266,7 +278,7 @@ proc asgnShell*(
 
 proc execShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind] = getDebugConfiguration()
+  debugConfig: set[DebugOutputKind] = getShellDebugConfig()
               ): tuple[output: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
@@ -447,7 +459,14 @@ macro shellAssign*(cmd: untyped): untyped =
     echo result.repr
 
 when isMainModule:
-  let (res, code) = shellVerbose:
+  let (res, _) = shellVerbose:
     echo "test"
 
   echo "Result is: ", res
+
+  setShellDebugConfig({})
+
+  let (res2, _) = shellVerbose:
+    echo "test2"
+
+  echo "Result 2 is:", res2
