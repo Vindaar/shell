@@ -18,11 +18,13 @@ type
     dokCommand
     dokError
     dokOutput
+    dokRuntime
 
 var globalDebugConfig: set[DebugOutputKind] = {
   dokCommand,
   dokError,
-  dokOutput
+  dokOutput,
+  dokRuntime
 }
 
 var globalConfigChanged: bool = false
@@ -39,6 +41,7 @@ proc getShellDebugConfig(): set[DebugOutputKind] =
     when defined shellNoDebugOutput: result excl dokOutput
     when defined shellNoDebugError: result excl dokError
     when defined shellNoDebugCommand: result excl dokCommand
+    when defined shellNoDebugRuntime: result excl dokRuntime
 
 
 proc stringify(cmd: NimNode): string
@@ -256,6 +259,16 @@ proc asgnShell*(
         # outstream died on us?
         doAssert outStream.isNil
         break
+
+    if not outStream.atEnd():
+      if dokOutput in debugConfig:
+        let rem = outStream.readAll()
+        res &= rem
+        for line in rem.split("\n"):
+          echo "shell> ", line
+      else:
+        res &= outStream.readAll()
+
     let exitCode = pid.peekExitCode
     if exitCode != 0:
       # add error stream to output
@@ -376,13 +389,17 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
     result.add quote do:
+      let debugConfig = `debugConfig`
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
-        let tmp = execShell(`qCmd`, `debugConfig`)
+        let tmp = execShell(`qCmd`, debugConfig)
         `outputSym` = `outputSym` & tmp[0]
         `exCodeSym` = tmp[1]
       else:
-        echo "Skipped command `" & `qCmd` & "` due to failure in previous command!"
+        if dokRuntime in debugConfig:
+          echo "Skipped command `" &
+            `qCmd` &
+            "` due to failure in previous command!"
 
   # put everything in a block and return the result
   result = quote do:
