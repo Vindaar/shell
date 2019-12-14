@@ -27,11 +27,11 @@ var globalDebugConfig: set[DebugOutputKind] = {
 
 var globalConfigChanged: bool = false
 
-proc setShellDebugConfig(config: set[DebugOutputKind]): void =
+proc setShellDebugConfig*(config: set[DebugOutputKind]): void =
   globalDebugConfig = config
   globalConfigChanged = true
 
-proc getShellDebugConfig*(): set[DebugOutputKind] =
+proc getShellDebugConfig(): set[DebugOutputKind] =
   ## Return configuration for debugging of the shell command execution
   result = globalDebugConfig
 
@@ -226,7 +226,8 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
 
 
 # NOTE Checking for key in set, calling function on each `asgnShell`
-# invokation might decrease performance.
+# invokation might decrease performance. Although not printing
+# anything into stdout might increase performace.
 
 proc asgnShell*(
   cmd: string,
@@ -346,7 +347,7 @@ proc nilOrQuote(cmd: string): NimNode =
   else:
     result = newLit(cmd)
 
-macro shellVerbose*(cmds: untyped): untyped =
+macro shellVerbose*(debugConfig, cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into " "
   ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
@@ -377,7 +378,7 @@ macro shellVerbose*(cmds: untyped): untyped =
     result.add quote do:
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
-        let tmp = execShell(`qCmd`)
+        let tmp = execShell(`qCmd`, `debugConfig`)
         `outputSym` = `outputSym` & tmp[0]
         `exCodeSym` = tmp[1]
       else:
@@ -391,6 +392,11 @@ macro shellVerbose*(cmds: untyped): untyped =
 
   when defined(debugShell):
     echo result.repr
+
+macro shellVerbose*(cmds: untyped): untyped =
+  quote do:
+    shellVerbose getShellDebugConfig():
+      `cmds`
 
 macro shell*(cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
@@ -470,3 +476,9 @@ when isMainModule:
     echo "test2"
 
   echo "Result 2 is:", res2
+
+  let (res3, _) =
+    shellVerbose {dokOutput}:
+      echo "Result"
+
+  echo "Result 3 is:", res3
