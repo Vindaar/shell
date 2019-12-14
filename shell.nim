@@ -230,7 +230,7 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
 
 proc asgnShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind]
+  debugConfig: set[DebugOutputKind] = getShellDebugConfig()
               ): tuple[output: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
