@@ -14,6 +14,11 @@ type
     ifPipe = "|"
     ifAnd = "&&"
 
+  DebugOutputKind* = enum
+    dokCommand
+    dokError
+    dokOutput
+
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode): string
 
@@ -197,7 +202,24 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
 
-proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
+proc getDebugConfiguration(): set[DebugOutputKind] =
+  ## Return configuration for debugging of the shell command execution
+  # TODO implement. Check for compile-time pragma, runtime
+  # configuration changes
+  {dokError}
+
+# IDEA it might be a good idea to provide compile-time configuration
+# for enabling/disabling additional shell debuging functionality.
+# Maybe provide `-d:shellDebugOutput` `-d:shellDebugError` and
+# `-d:shellDebugCommand`
+
+# NOTE Checking for key in set, calling function on each `asgnShell`
+# invokation might decrease performance.
+
+proc asgnShell*(
+  cmd: string,
+  debugConfig: set[DebugOutputKind]
+              ): tuple[output: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
@@ -209,7 +231,8 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
       try:
         let streamRes = outStream.readLine(line)
         if streamRes:
-          echo "shell> ", line
+          if dokOutput in debugConfig:
+            echo "shell> ", line
           res = res & "\n" & line
         else:
           # should mean stream is finished, i.e. process stoped
@@ -223,6 +246,13 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
     let exitCode = pid.peekExitCode
     if exitCode != 0:
       # add error stream to output
+
+      # NOTE TODO instead of adding error and result into the same
+      # output (making it impossible to differentiate between them) it
+      # might be possible to either change function signature (not
+      # desired as it breaks API) or provide optional parameter for
+      # function call (`var errorRes: Option[string]` or something
+      # like that)
       let err = pid.errorStream
       res.add err.readAll()
       err.close()
@@ -234,17 +264,23 @@ proc asgnShell*(cmd: string): tuple[output: string, exitCode: int] =
     result = gorgeEx(nscmd, "", "")
   result[0] = result[0].strip(chars = {'\n'})
 
-proc execShell*(cmd: string): tuple[output: string, exitCode: int] =
+proc execShell*(
+  cmd: string,
+  debugConfig: set[DebugOutputKind] = getDebugConfiguration()
+              ): tuple[output: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
-  echo "shellCmd: ", cmd
-  result = asgnShell(cmd)
-  when defined(NimScript):
-    # output of child process is already echoed on the fly for non NimScript
-    # usage
-    if result[0].len > 0:
-      for line in splitLines(result[0]):
-        echo "shell> ", line
+  if dokCommand in debugConfig:
+    echo "shellCmd: ", cmd
+  result = asgnShell(cmd, debugConfig)
+
+  if dokOutput in debugConfig:
+    when defined(NimScript):
+      # output of child process is already echoed on the fly for non NimScript
+      # usage
+      if result[0].len > 0:
+        for line in splitLines(result[0]):
+          echo "shell> ", line
 
 proc flattenCmds(cmds: NimNode): NimNode =
   ## removes nested StmtLists, if any
@@ -409,3 +445,9 @@ macro shellAssign*(cmd: untyped): untyped =
 
   when defined(debugShell):
     echo result.repr
+
+when isMainModule:
+  let (res, code) = shellVerbose:
+    echo "test"
+
+  echo "Result is: ", res
