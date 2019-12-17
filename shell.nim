@@ -20,29 +20,12 @@ type
     dokOutput
     dokRuntime
 
-var globalDebugConfig: set[DebugOutputKind] = {
-  dokCommand,
-  dokError,
-  dokOutput,
-  dokRuntime
+const defaultDebugConfig: set[DebugOutputKind] = {
+    when not defined shellNoDebugOutput: dokOutput,
+    when not defined shellNoDebugError: dokError,
+    when not defined shellNoDebugCommand: dokCommand,
+    when not defined shellNoDebugRuntime: dokRuntime,
 }
-
-var globalConfigChanged: bool = false
-
-proc setShellDebugConfig*(config: set[DebugOutputKind]): void =
-  globalDebugConfig = config
-  globalConfigChanged = true
-
-proc getShellDebugConfig(): set[DebugOutputKind] =
-  ## Return configuration for debugging of the shell command execution
-  result = globalDebugConfig
-
-  if not globalConfigChanged:
-    when defined shellNoDebugOutput: result excl dokOutput
-    when defined shellNoDebugError: result excl dokError
-    when defined shellNoDebugCommand: result excl dokCommand
-    when defined shellNoDebugRuntime: result excl dokRuntime
-
 
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode): string
@@ -234,7 +217,7 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
 
 proc asgnShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind] = getShellDebugConfig()
+  debugConfig: set[DebugOutputKind] = defaultDebugConfig
               ): tuple[output: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
@@ -280,7 +263,16 @@ proc asgnShell*(
       # function call (`var errorRes: Option[string]` or something
       # like that)
       let err = pid.errorStream
-      res.add err.readAll()
+      let errorText = err.readAll()
+
+      if dokRuntime in debugConfig:
+        echo "Error when executing: ", cmd
+
+      if dokError in debugConfig:
+        for line in errorText.split("\n"):
+          echo "err> ", line
+
+      res.add errorText
       err.close()
     pid.close()
     result = (output: res, exitCode: exitCode)
@@ -292,10 +284,14 @@ proc asgnShell*(
 
 proc execShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind] = getShellDebugConfig()
+  debugConfig: set[DebugOutputKind] = defaultDebugConfig
               ): tuple[output: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
+
+  # IDEA split command by space and layout it line-by-line if it is
+  # too long to fit on one line. This will increase readability of
+  # debug output
   if dokCommand in debugConfig:
     echo "shellCmd: ", cmd
   result = asgnShell(cmd, debugConfig)
@@ -412,7 +408,7 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
 
 macro shellVerbose*(cmds: untyped): untyped =
   quote do:
-    shellVerbose getShellDebugConfig():
+    shellVerbose defaultDebugConfig:
       `cmds`
 
 macro shell*(cmds: untyped): untyped =
@@ -487,9 +483,7 @@ when isMainModule:
 
   echo "Result is: ", res
 
-  setShellDebugConfig({})
-
-  let (res2, _) = shellVerbose:
+  let (res2, _) = shellVerbose {dokError}:
     echo "test2"
 
   echo "Result 2 is:", res2
