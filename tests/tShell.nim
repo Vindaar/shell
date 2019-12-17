@@ -313,12 +313,10 @@ suite "[shell]":
     check res[0].startsWith("runBrokenCommand")
 
   test "[shellVerboseErr] check stderr output":
-    block:
-      let test = "test"
-      let (res, err, _) = shellVerboseErr:
-        echo ($test)
-        echo ($test) >&2
+    let test = "test"
+    let (res, err, _) = shellVerboseErr:
+      echo ($test)
+      echo ($test) >&2
 
-      doAssert test == res
-      echo "[" & err & "]"
-      doAssert test == err
+    doAssert test == res
+    doAssert test == err

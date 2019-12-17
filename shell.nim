@@ -381,15 +381,14 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
     result.add quote do:
-      let debugConfig = `debugConfig`
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
-        let tmp = execShell(`qCmd`, debugConfig)
+        let tmp = execShell(`qCmd`, `debugConfig`)
         `outputSym` = `outputSym` & tmp[0]
         `outerrSym` = tmp[1]
         `exCodeSym` = tmp[2]
       else:
-        if dokRuntime in debugConfig:
+        if dokRuntime in `debugConfig`:
           echo "Skipped command `" &
             `qCmd` &
             "` due to failure in previous command!"
@@ -499,4 +498,13 @@ macro shellAssign*(cmd: untyped): untyped =
     echo result.repr
 
 when isMainModule:
-  discard
+  var myConfig: set[DebugOutputKind] = {dokError}
+  let (res, _) = shellVerbose(myConfig):
+    echo "test"
+
+  echo "Result is: ", res
+
+  myConfig = {dokOutput}
+
+  let (res2, _) = shellVerbose(myConfig):
+    echo "test2"
