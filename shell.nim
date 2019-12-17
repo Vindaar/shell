@@ -214,7 +214,7 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
 proc asgnShell*(
   cmd: string,
   debugConfig: set[DebugOutputKind] = defaultDebugConfig
-              ): tuple[output: string, exitCode: int, error: string] =
+              ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
@@ -266,7 +266,7 @@ proc asgnShell*(
           echo "err> ", line
 
     pid.close()
-    result = (output: res, exitCode: exitCode, error: errorText.strip())
+    result = (output: res, error: errorText.strip(), exitCode: exitCode)
   else:
     # prepend the NimScript called command by current directory
     let nscmd = &"cd {getCurrentDir()} && " & cmd
@@ -276,7 +276,7 @@ proc asgnShell*(
 proc execShell*(
   cmd: string,
   debugConfig: set[DebugOutputKind] = defaultDebugConfig
-              ): tuple[output: string, exitCode: int, error: string] =
+              ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
 
@@ -383,8 +383,8 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
       if `exCodeSym` == 0:
         let tmp = execShell(`qCmd`, debugConfig)
         `outputSym` = `outputSym` & tmp[0]
-        `exCodeSym` = tmp[1]
-        `outerrSym` = tmp[2]
+        `outerrSym` = tmp[1]
+        `exCodeSym` = tmp[2]
       else:
         if dokRuntime in debugConfig:
           echo "Skipped command `" &
@@ -395,7 +395,7 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
   result = quote do:
     block:
       `result`
-      (`outputSym`, `exCodeSym`, `outerrSym`)
+      (`outputSym`, `outerrSym`, `exCodeSym`)
 
   when defined(debugShell):
     echo result.repr
@@ -416,7 +416,7 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
   quote do:
     block:
       var res: tuple[output: string, code: int]
-      let (outStr, code, outErr) = shellVerboseImpl `debugConfig`:
+      let (outStr, outErr, code) = shellVerboseImpl `debugConfig`:
         `cmds`
 
       res.output = outStr & outErr
@@ -505,7 +505,7 @@ when isMainModule:
 
   block:
     let test = "test"
-    let (res, _, err) = shellVerboseErr:
+    let (res, err, _) = shellVerboseErr:
       echo ($test)
       echo ($test) >&2
 
