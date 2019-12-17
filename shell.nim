@@ -266,12 +266,15 @@ proc asgnShell*(
           echo "err> ", line
 
     pid.close()
-    result = (output: res, error: errorText.strip(), exitCode: exitCode)
+    result = (output: res, error: errorText, exitCode: exitCode)
   else:
     # prepend the NimScript called command by current directory
     let nscmd = &"cd {getCurrentDir()} && " & cmd
-    result = gorgeEx(nscmd, "", "")
-  result[0] = result[0].strip(chars = {'\n'})
+    let (res, code) = gorgeEx(nscmd, "", "")
+    result.output = res
+    result.exitCode = code
+  result.output = result.output.strip(chars = {'\n'})
+  result.error = result.error.strip(chars = {'\n'})
 
 proc execShell*(
   cmd: string,
@@ -496,19 +499,4 @@ macro shellAssign*(cmd: untyped): untyped =
     echo result.repr
 
 when isMainModule:
-  block:
-    let test = "test"
-    let (res, _) = shellVerbose:
-      echo ($test)
-
-    doAssert test == res
-
-  block:
-    let test = "test"
-    let (res, err, _) = shellVerboseErr:
-      echo ($test)
-      echo ($test) >&2
-
-    doAssert test == res
-    echo "[" & err & "]"
-    doAssert test == err
+  discard
