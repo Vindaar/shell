@@ -211,14 +211,10 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   result = cmds.join(sep)
 
 
-# NOTE Checking for key in set, calling function on each `asgnShell`
-# invokation might decrease performance. Although not printing
-# anything into stdout might increase performace.
-
 proc asgnShell*(
   cmd: string,
   debugConfig: set[DebugOutputKind] = defaultDebugConfig
-              ): tuple[output: string, exitCode: int] =
+              ): tuple[output: string, exitCode: int, error: string] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
@@ -253,18 +249,15 @@ proc asgnShell*(
         res &= outStream.readAll()
 
     let exitCode = pid.peekExitCode
+
+    # Zero exit code does not guarantee that there will be nothing in
+    # stderr.
+
+    let err = pid.errorStream
+    let errorText = err.readAll()
+    err.close()
+
     if exitCode != 0:
-      # add error stream to output
-
-      # NOTE TODO instead of adding error and result into the same
-      # output (making it impossible to differentiate between them) it
-      # might be possible to either change function signature (not
-      # desired as it breaks API) or provide optional parameter for
-      # function call (`var errorRes: Option[string]` or something
-      # like that)
-      let err = pid.errorStream
-      let errorText = err.readAll()
-
       if dokRuntime in debugConfig:
         echo "Error when executing: ", cmd
 
@@ -272,10 +265,8 @@ proc asgnShell*(
         for line in errorText.split("\n"):
           echo "err> ", line
 
-      res.add errorText
-      err.close()
     pid.close()
-    result = (output: res, exitCode: exitCode)
+    result = (output: res, exitCode: exitCode, error: errorText.strip())
   else:
     # prepend the NimScript called command by current directory
     let nscmd = &"cd {getCurrentDir()} && " & cmd
@@ -285,7 +276,7 @@ proc asgnShell*(
 proc execShell*(
   cmd: string,
   debugConfig: set[DebugOutputKind] = defaultDebugConfig
-              ): tuple[output: string, exitCode: int] =
+              ): tuple[output: string, exitCode: int, error: string] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
 
@@ -356,7 +347,7 @@ proc nilOrQuote(cmd: string): NimNode =
   else:
     result = newLit(cmd)
 
-macro shellVerbose*(debugConfig, cmds: untyped): untyped =
+macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into " "
   ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
@@ -378,9 +369,11 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
   # and the other to store the last exitCode.
   let exCodeSym = genSym(nskVar, "exitCode")
   let outputSym = genSym(nskVar, "outputStr")
+  let outerrSym = genSym(nskVar, "outerrStr")
   result.add quote do:
     var `outputSym` = ""
     var `exCodeSym`: int
+    var `outerrSym` = ""
 
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
@@ -391,6 +384,7 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
         let tmp = execShell(`qCmd`, debugConfig)
         `outputSym` = `outputSym` & tmp[0]
         `exCodeSym` = tmp[1]
+        `outerrSym` = tmp[2]
       else:
         if dokRuntime in debugConfig:
           echo "Skipped command `" &
@@ -401,10 +395,34 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
   result = quote do:
     block:
       `result`
-      (`outputSym`, `exCodeSym`)
+      (`outputSym`, `exCodeSym`, `outerrSym`)
 
   when defined(debugShell):
     echo result.repr
+
+
+macro shellVerboseErr*(debugConfig, cmds: untyped): untyped =
+  quote do:
+    shellVerboseImpl `debugConfig`:
+      `cmds`
+
+
+macro shellVerboseErr*(cmds: untyped): untyped =
+  quote do:
+    shellVerboseImpl defaultDebugConfig:
+      `cmds`
+
+macro shellVerbose*(debugConfig, cmds: untyped): untyped =
+  quote do:
+    block:
+      var res: tuple[output: string, code: int]
+      let (outStr, code, outErr) = shellVerboseImpl `debugConfig`:
+        `cmds`
+
+      res.output = outStr & outErr
+      res.code = code
+      res
+
 
 macro shellVerbose*(cmds: untyped): untyped =
   quote do:
@@ -478,18 +496,19 @@ macro shellAssign*(cmd: untyped): untyped =
     echo result.repr
 
 when isMainModule:
-  let (res, _) = shellVerbose:
-    echo "test"
+  block:
+    let test = "test"
+    let (res, _) = shellVerbose:
+      echo ($test)
 
-  echo "Result is: ", res
+    doAssert test == res
 
-  let (res2, _) = shellVerbose {dokError}:
-    echo "test2"
+  block:
+    let test = "test"
+    let (res, _, err) = shellVerboseErr:
+      echo ($test)
+      echo ($test) >&2
 
-  echo "Result 2 is:", res2
-
-  let (res3, _) =
-    shellVerbose {dokOutput}:
-      echo "Result"
-
-  echo "Result 3 is:", res3
+    doAssert test == res
+    echo "[" & err & "]"
+    doAssert test == err
