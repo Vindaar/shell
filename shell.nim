@@ -20,12 +20,25 @@ type
     dokOutput
     dokRuntime
 
-const defaultDebugConfig: set[DebugOutputKind] = {
-    when not defined shellNoDebugOutput: dokOutput,
-    when not defined shellNoDebugError: dokError,
-    when not defined shellNoDebugCommand: dokCommand,
-    when not defined shellNoDebugRuntime: dokRuntime,
-}
+const defaultDebugConfig: set[DebugOutputKind] =
+  block:
+    var config: set[DebugOutputKind] = {
+      dokOutput, dokError, dokCommand, dokRuntime
+    }
+
+    when defined shellNoDebugOutput:
+      config = config - {dokOutput}
+
+    when defined shellNoDebugError:
+      config = config - {dokError}
+
+    when defined shellNoDebugCommand:
+      config = config - {dokCommand}
+
+    when defined shellNoDebugRuntime:
+      config = config - {dokRuntime}
+
+    config
 
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode): string
@@ -499,7 +512,7 @@ macro shellAssign*(cmd: untyped): untyped =
 
 when isMainModule:
   var myConfig: set[DebugOutputKind] = {dokError}
-  let (res, _) = shellVerbose(myConfig):
+  let (res, _) = shellVerbose:
     echo "test"
 
   echo "Result is: ", res
