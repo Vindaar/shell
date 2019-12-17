@@ -421,7 +421,6 @@ macro shellVerboseErr*(debugConfig, cmds: untyped): untyped =
     shellVerboseImpl `debugConfig`:
       `cmds`
 
-
 macro shellVerboseErr*(cmds: untyped): untyped =
   quote do:
     shellVerboseImpl defaultDebugConfig:
@@ -437,7 +436,6 @@ macro shellVerbose*(debugConfig, cmds: untyped): untyped =
       res.output = outStr & outErr
       res.code = code
       res
-
 
 macro shellVerbose*(cmds: untyped): untyped =
   quote do:
@@ -509,15 +507,3 @@ macro shellAssign*(cmd: untyped): untyped =
 
   when defined(debugShell):
     echo result.repr
-
-when isMainModule:
-  var myConfig: set[DebugOutputKind] = {dokError}
-  let (res, _) = shellVerbose:
-    echo "test"
-
-  echo "Result is: ", res
-
-  myConfig = {dokOutput}
-
-  let (res2, _) = shellVerbose(myConfig):
-    echo "test2"
