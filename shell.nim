@@ -20,6 +20,13 @@ type
     dokOutput
     dokRuntime
 
+
+type
+  ShellExecError = ref object of CatchableError
+    cmd: string ## Command that returned non-zero exit code
+    retcode: int ## Exit code
+    errstr: string ## Stdout for command
+
 const defaultDebugConfig: set[DebugOutputKind] =
   block:
     var config: set[DebugOutputKind] = {
@@ -37,6 +44,10 @@ const defaultDebugConfig: set[DebugOutputKind] =
 
     when defined shellNoDebugRuntime:
       config = config - {dokRuntime}
+
+    when defined shellThrowException:
+      config = {}
+
 
     config
 
@@ -301,6 +312,7 @@ proc execShell*(
   # debug output
   if dokCommand in debugConfig:
     echo "shellCmd: ", cmd
+
   result = asgnShell(cmd, debugConfig)
 
   if dokOutput in debugConfig:
@@ -310,6 +322,15 @@ proc execShell*(
       if result[0].len > 0:
         for line in splitLines(result[0]):
           echo "shell> ", line
+
+  when defined shellThrowException:
+    if result.exitCode != 0:
+      raise ShellExecError(
+        msg: "Command " & cmd & " exited with non-zero code",
+        cmd: cmd,
+        retcode: result.exitCode,
+        errstr: result.error
+      )
 
 proc flattenCmds(cmds: NimNode): NimNode =
   ## removes nested StmtLists, if any
@@ -507,3 +528,16 @@ macro shellAssign*(cmd: untyped): untyped =
 
   when defined(debugShell):
     echo result.repr
+
+when isMainModule:
+  try:
+    shell:
+      ls -z
+  except ShellExecError:
+    let e = cast[ShellExecError](getCurrentException())
+    echo e.msg
+    echo "command was: ", e.cmd
+    echo "return code: ", e.retcode
+    echo "error outpt: "
+    for l in e.errstr.split('\n'):
+      echo "  ", l
