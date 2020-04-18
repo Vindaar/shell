@@ -12,6 +12,7 @@ requires "nim >= 0.19.0"
 
 task test, "executes the tests":
   exec "nim c -d:debugShell -r tests/tShell.nim"
+  exec "nim c -r tests/tException.nim"
   # execute using NimScript as well
   exec "nim e -d:debugShell -r tests/tNimScript.nims"
   # and execute PWD test, by running the nims file in another dir,
