@@ -459,7 +459,9 @@ echo "Returned string: '", res, "' with exit code ", code
 
 Printing error directly into stdout is good solution for most of the
 use cases, but sometimes it is necessary to provide more sophisticated
-error handing - throwing exception when command failed.
+error handing - throwing exception when command failed. To switch to
+exceptions use ~-d:shellThrowException~. It will automatically disable
+all other output types in the default configuration.
 
 #+begin_src nim
 {.define(shellThrowException).}
