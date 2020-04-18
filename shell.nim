@@ -25,7 +25,8 @@ type
   ShellExecError* = ref object of CatchableError
     cmd*: string ## Command that returned non-zero exit code
     retcode*: int ## Exit code
-    errstr*: string ## Stdout for command
+    errstr*: string ## Stderr for command
+    outstr*: string ## Stdout for command
 
 const defaultDebugConfig: set[DebugOutputKind] =
   block:
@@ -325,7 +326,8 @@ proc execShell*(
         msg: "Command " & cmd & " exited with non-zero code",
         cmd: cmd,
         retcode: result.exitCode,
-        errstr: result.error
+        errstr: result.error,
+        outstr: result.output
       )
 
 proc flattenCmds(cmds: NimNode): NimNode =

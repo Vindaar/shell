@@ -475,6 +475,7 @@ except ShellExecError:
   echo "command was: ", e.cmd # Original command string
   assert e.cmd == "ls -z"
   echo "return code: ", e.retcode # Return code
+  echo "regular out: ", e.outstr # Stdout from command
   echo "error outpt: "
   for l in e.errstr.split('\n'): # Stderr from the command
     echo "  ", l
@@ -484,6 +485,7 @@ except ShellExecError:
 : Command ls -z exited with non-zero code
 : command was: ls -z
 : return code: 2
+: regular out:
 : error outpt:
 :   ls: invalid option -- 'z'
 :   Try 'ls --help' for more information.
