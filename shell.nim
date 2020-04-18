@@ -434,6 +434,15 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
 
 
 macro shellVerboseErr*(debugConfig, cmds: untyped): untyped =
+  ## Run shell command, return `(stdout, stderr, code)`. `debugConfig`
+  ## is an configuration for shell execution
+  runnableExamples:
+    let (res, err, code) = shellVerboseErr {dokCommand}:
+      echo "test"
+
+    assert res == "test"
+    assert code == 0
+
   quote do:
     shellVerboseImpl `debugConfig`:
       `cmds`
