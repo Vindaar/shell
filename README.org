@@ -436,9 +436,10 @@ shell:
 : shellCmd: ls
 
 The default ~shellVerbose~ command combines stderr and stdout into
-single result. To get =stdout=, =stderr= and return code separately
-use ~shellVerboseErr~. Both of these templates have an overload that
-takes ~set[DebugOutputKind]~ to control printing settings:
+single result. To get =stdout=, =stderr= and the return code
+separately use ~shellVerboseErr~. Both of these templates have an
+overload that takes ~set[DebugOutputKind]~ to control printing
+settings:
 
 #+BEGIN_SRC nim :exports both :results scalar
 import shell
@@ -456,9 +457,10 @@ echo "Returned string: '", res, "' with exit code ", code
 
 Printing errors directly into stdout is good solution for most of the
 use cases, but sometimes it is necessary to provide more sophisticated
-error handing - throwing exception when command failed. To switch to
-exceptions use ~-d:shellThrowException~. It will automatically disable
-all other output types in the default configuration.
+error handing - throwing an exception when the command failed. To
+switch to exceptions use ~-d:shellThrowException~. It will
+automatically disable all other output types in the default
+configuration.
 
 #+begin_src nim :exports both :results scalar
 {.define(shellThrowException).}
@@ -491,3 +493,45 @@ except ShellExecError:
 :   Try 'ls --help' for more information.
 
 On command failure ~ShellExecError~ is raised.
+
+Note that some commands output error messages into ~stdout~ rather
+than into ~stderr~ - it might be necessary to check both. In this
+particular example content of the ~stderr~ is largely meaningless:
+actual reason for error was printed into ~stdout~.
+
+#+begin_src nim :exports both :results scalar
+{.define(shellThrowException).}
+
+import shell, strutils
+
+try:
+  shell:
+    ngspice -b "/tmp/ngpsice-simulation/zzz.netkRs8jE"
+except ShellExecError:
+  let e = cast[ShellExecError](getCurrentException())
+  echo e.msg # Error message describing what happened
+  echo "command was: ", e.cmd # Original command string
+  echo "return code: ", e.retcode # Return code
+  echo "regular out: \n====\n", e.outstr # Stdout from command
+  echo "====\nerror outpt: \n====\n", e.errstr # Stderr from the command
+#+end_src
+
+#+RESULTS:
+#+begin_example
+Command ngspice -b /tmp/ngpsice-simulation/zzz.netkRs8jE exited with non-zero code
+command was: ngspice -b /tmp/ngpsice-simulation/zzz.netkRs8jE
+return code: 1
+regular out:
+====
+Circuit: simulating document
+
+Error on line 53 :
+  d 7 6 1n4148
+device already exists, existing one being used
+====
+error outpt:
+====
+ngspice stopped due to error, no simulation run!
+
+ERROR: fatal error in ngspice, exit(1)
+#+end_example
