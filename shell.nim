@@ -383,9 +383,9 @@ proc nilOrQuote(cmd: string): NimNode =
 macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into " "
-  ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
+  ## The command is echoed before it is run. It is prefixed by `shellCmd:`.
   ## If there is output, the output is echoed. Each successive line of the
-  ## output is prefixed by `shell> `.
+  ## output is prefixed by `shell>`.
   ## If multiple commands are run in succession (i.e. multiple statements in
   ## the macro body) and one command returns a non-zero exit code, the following
   ## commands will not be run. Instead a warning message will be shown.
