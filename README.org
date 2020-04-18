@@ -453,7 +453,7 @@ echo "Returned string: '", res, "' with exit code ", code
 
 #+END_SRC
 
-#+RESULTS[f131ce6c1b15aaf206f997569ec95ff8564a05dc]:
+#+RESULTS:
 : shellCmd: echo test
 : Returned string: 'test' with exit code 0
 
