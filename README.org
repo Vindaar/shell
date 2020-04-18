@@ -393,13 +393,10 @@ may use the =shellEcho= macro instead. It simply echoes the commands
 that would otherwise be run.
 
 ** Error reporting
-  :PROPERTIES:
-  :header-args:nim: :exports both :results scalar
-  :END:
 
 By default ~shell~ prints output messages to stdout:
 
-#+BEGIN_SRC nim
+#+BEGIN_SRC nim :exports both :results scalar
 import shell
 
 shell:
@@ -443,7 +440,7 @@ result. Tot get =stdout=, =stderr= and return code separately use
 ~shellVerboseErr~. Both of these templates have an overload that takes
 ~set[DebugOutputKind]~ to control printing settings:
 
-#+BEGIN_SRC nim
+#+BEGIN_SRC nim :exports both :results scalar
 import shell
 
 let (res, err, code) = shellVerboseErr {dokCommand}:
@@ -463,7 +460,7 @@ error handing - throwing exception when command failed. To switch to
 exceptions use ~-d:shellThrowException~. It will automatically disable
 all other output types in the default configuration.
 
-#+begin_src nim
+#+begin_src nim :exports both :results scalar
 {.define(shellThrowException).}
 
 import shell, strutils
