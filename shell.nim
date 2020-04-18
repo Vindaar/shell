@@ -22,10 +22,10 @@ type
 
 
 type
-  ShellExecError = ref object of CatchableError
-    cmd: string ## Command that returned non-zero exit code
-    retcode: int ## Exit code
-    errstr: string ## Stdout for command
+  ShellExecError* = ref object of CatchableError
+    cmd*: string ## Command that returned non-zero exit code
+    retcode*: int ## Exit code
+    errstr*: string ## Stdout for command
 
 const defaultDebugConfig: set[DebugOutputKind] =
   block:
@@ -306,10 +306,6 @@ proc execShell*(
               ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
-
-  # IDEA split command by space and layout it line-by-line if it is
-  # too long to fit on one line. This will increase readability of
-  # debug output
   if dokCommand in debugConfig:
     echo "shellCmd: ", cmd
 
@@ -528,16 +524,3 @@ macro shellAssign*(cmd: untyped): untyped =
 
   when defined(debugShell):
     echo result.repr
-
-when isMainModule:
-  try:
-    shell:
-      ls -z
-  except ShellExecError:
-    let e = cast[ShellExecError](getCurrentException())
-    echo e.msg
-    echo "command was: ", e.cmd
-    echo "return code: ", e.retcode
-    echo "error outpt: "
-    for l in e.errstr.split('\n'):
-      echo "  ", l
