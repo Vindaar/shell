@@ -423,7 +423,7 @@ What is printed to stdout can be configured by using defines:
 By default the are disabled - to enable use either ~-d:shellNoDebug*~
 or use ~{.define(shellNoDebug*).}~ pragma
 
-#+BEGIN_SRC nim
+#+BEGIN_SRC nim :exports both :results scalar
 {.define(shellNoDebugOutput).}
 
 import shell
