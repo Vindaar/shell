@@ -4,7 +4,7 @@
 A mini Nim DSL to execute shell commands more conveniently.
 
 ** Usage
-With this macro you can simply write 
+With this macro you can simply write
 #+BEGIN_SRC nim
 shell:
   touch foo
@@ -18,14 +18,14 @@ execShell("mv foo bar")
 execShell("rm bar")
 #+END_SRC
 where =execShell= is a proc around =startProcess= for normal
-compilation and =gorgeEx= when using NimScript. 
+compilation and =gorgeEx= when using NimScript.
 
 Note: When using =NimScript= the given command is prepended by
-#+BEGIN_SRC 
+#+BEGIN_SRC
 &"cd {getCurrentDir()} && "
 #+END_SRC
 in order to switch the evaluation into the directory of the =shell=
-call. 
+call.
 The same is achieved on the compiled backend by the =poEvalCommand=
 argument to =startProcess=.
 
@@ -86,7 +86,7 @@ will work just as expected, echoing =Hallo= in the shell.
 =`=. For the old behavior compile with =-d:oldQuote=.
 
 Another important feature to make this library useful is quoting of
-Nim symbols. 
+Nim symbols.
 
 This is handled via parenthesis =()= (if you need to run something in
 a subshell unfortunately that will have to be done with an explicit
@@ -100,7 +100,7 @@ The simplest case would be:
 let name = "Vindaar"
 shell:
   echo Hello from ($name)
-#+END_SRC 
+#+END_SRC
 which will perform the call:
 #+BEGIN_SRC nim
 execShell(&"echo Hello from {name}!")
@@ -126,7 +126,7 @@ This can be done in several ways.
 let fname = "myimage"
 shell:
   convert ($fname).png ($fname).jpg
-#+END_SRC 
+#+END_SRC
 Note that this is a special case. Continuing after a =()= quote
 without literal strings will only work for dot expressions. For
 instance:
@@ -191,7 +191,7 @@ the most predictable behavior. But that was a bad idea from my side!
 If you need spaces, simply put it outside the =()= and use a space!
 
 The =doAssert= below is to be understood in the context of the =shell=
-macro. To summarize the above then: 
+macro. To summarize the above then:
 #+BEGIN_SRC nim
 let outfile = "myoutput.txt"
 doAssert ("--out="$outfile) == &"--out={outfile}" # <- without space, ident after
@@ -309,7 +309,7 @@ This macro can also be used in NimScript! Instead of =execCmdEx= the
 ** Known issues
 
 Certain things unfortunately *have* to go into quotation marks. As
-seen in the =one= example above, the simple =..= is not allowed. 
+seen in the =one= example above, the simple =..= is not allowed.
 
 Variable assignments in the shell need to be handed via a string
 literal:
@@ -387,7 +387,106 @@ according to the expansion above.
 ** Debugging
 In order to see what's going on, you can either compile your program
 with the =-d:debugShell= flag, which will then echo the rewritten
-commands during compilation. 
+commands during compilation.
 Alternatively in order to avoid calling the commands immediately, you
 may use the =shellEcho= macro instead. It simply echoes the commands
 that would otherwise be run.
+
+** Error reporting
+  :PROPERTIES:
+  :header-args:nim: :exports both :results scalar
+  :END:
+
+By default ~shell~ prints output messages to stdout:
+
+#+BEGIN_SRC nim
+import shell
+
+shell:
+  ls
+#+END_SRC
+
+#+RESULTS:
+: shellCmd: ls
+: shell> nim.cfg
+: shell> README.org
+: shell> shell
+: shell> shell.nim
+: shell> shell.nim.bin
+: shell> shell.nimble
+: shell> tests
+
+What is printed to stdout can be configured by using defines:
+
+- ~shellNoDebugOutput~ :: Do not print command output
+- ~shellNoDebugError~ :: Do not print error output
+- ~shellNoDebugCommand~ :: Do not print command being executed
+- ~shellNoDebugRuntime~ :: When error occurs do not print failed command
+
+By default the are disabled - to enable use either ~-d:shellNoDebug*~
+or use ~{.define(shellNoDebug*).}~ pragma
+
+#+BEGIN_SRC nim
+{.define(shellNoDebugOutput).}
+
+import shell
+
+shell:
+  ls
+#+END_SRC
+
+#+RESULTS:
+: shellCmd: ls
+
+Default ~shellVerbose~ command combines stderr and stdout into single
+result. Tot get =stdout=, =stderr= and return code separately use
+~shellVerboseErr~. Both of these templates have an overload that takes
+~set[DebugOutputKind]~ to control printing settings:
+
+#+BEGIN_SRC nim
+import shell
+
+let (res, err, code) = shellVerboseErr {dokCommand}:
+  echo "test"
+
+echo "Returned string: '", res, "' with exit code ", code
+
+#+END_SRC
+
+#+RESULTS[f131ce6c1b15aaf206f997569ec95ff8564a05dc]:
+: shellCmd: echo test
+: Returned string: 'test' with exit code 0
+
+Printing error directly into stdout is good solution for most of the
+use cases, but sometimes it is necessary to provide more sophisticated
+error handing - throwing exception when command failed.
+
+#+begin_src nim
+{.define(shellThrowException).}
+
+import shell, strutils
+
+try:
+  shell:
+    ls -l
+    ls -z
+except ShellExecError:
+  let e = cast[ShellExecError](getCurrentException())
+  echo e.msg # Error message describing what happened
+  echo "command was: ", e.cmd # Original command string
+  assert e.cmd == "ls -z"
+  echo "return code: ", e.retcode # Return code
+  echo "error outpt: "
+  for l in e.errstr.split('\n'): # Stderr from the command
+    echo "  ", l
+#+end_src
+
+#+RESULTS:
+: Command ls -z exited with non-zero code
+: command was: ls -z
+: return code: 2
+: error outpt:
+:   ls: invalid option -- 'z'
+:   Try 'ls --help' for more information.
+
+On command failure ~ShellExecError~
