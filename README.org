@@ -420,8 +420,8 @@ What is printed to stdout can be configured by using defines:
 - ~shellNoDebugCommand~ :: Do not print command being executed
 - ~shellNoDebugRuntime~ :: When error occurs do not print failed command
 
-By default the are disabled - to enable use either ~-d:shellNoDebug*~
-or use ~{.define(shellNoDebug*).}~ pragma
+By default these are disabled - to enable use either
+~-d:shellNoDebug*~ or use the ~{.define(shellNoDebug*).}~ pragma
 
 #+BEGIN_SRC nim :exports both :results scalar
 {.define(shellNoDebugOutput).}
@@ -435,10 +435,10 @@ shell:
 #+RESULTS:
 : shellCmd: ls
 
-Default ~shellVerbose~ command combines stderr and stdout into single
-result. Tot get =stdout=, =stderr= and return code separately use
-~shellVerboseErr~. Both of these templates have an overload that takes
-~set[DebugOutputKind]~ to control printing settings:
+The default ~shellVerbose~ command combines stderr and stdout into
+single result. To get =stdout=, =stderr= and return code separately
+use ~shellVerboseErr~. Both of these templates have an overload that
+takes ~set[DebugOutputKind]~ to control printing settings:
 
 #+BEGIN_SRC nim :exports both :results scalar
 import shell
@@ -454,7 +454,7 @@ echo "Returned string: '", res, "' with exit code ", code
 : shellCmd: echo test
 : Returned string: 'test' with exit code 0
 
-Printing error directly into stdout is good solution for most of the
+Printing errors directly into stdout is good solution for most of the
 use cases, but sometimes it is necessary to provide more sophisticated
 error handing - throwing exception when command failed. To switch to
 exceptions use ~-d:shellThrowException~. It will automatically disable
@@ -490,4 +490,4 @@ except ShellExecError:
 :   ls: invalid option -- 'z'
 :   Try 'ls --help' for more information.
 
-On command failure ~ShellExecError~
+On command failure ~ShellExecError~ is raised.
