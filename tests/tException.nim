@@ -15,6 +15,7 @@ suite "[shell]":
       echo e.msg
       echo "command was: ", e.cmd
       assert e.cmd == "ls -z"
+      echo "executed in directory:", e.cwd
       echo "return code: ", e.retcode
       echo "error outpt: "
       for l in e.errstr.split('\n'):

@@ -511,6 +511,7 @@ except ShellExecError:
   let e = cast[ShellExecError](getCurrentException())
   echo e.msg # Error message describing what happened
   echo "command was: ", e.cmd # Original command string
+  echo "exec direct: ", e.cwd # 
   echo "return code: ", e.retcode # Return code
   echo "regular out: \n====\n", e.outstr # Stdout from command
   echo "====\nerror outpt: \n====\n", e.errstr # Stderr from the command
@@ -520,18 +521,13 @@ except ShellExecError:
 #+begin_example
 Command ngspice -b /tmp/ngpsice-simulation/zzz.netkRs8jE exited with non-zero code
 command was: ngspice -b /tmp/ngpsice-simulation/zzz.netkRs8jE
+exec direct: /home/test/workspace/git-sandbox/shell
 return code: 1
-regular out:
+regular out: 
 ====
-Circuit: simulating document
 
-Error on line 53 :
-  d 7 6 1n4148
-device already exists, existing one being used
 ====
-error outpt:
+error outpt: 
 ====
-ngspice stopped due to error, no simulation run!
-
-ERROR: fatal error in ngspice, exit(1)
+/tmp/ngpsice-simulation/zzz.netkRs8jE: No such file or directory
 #+end_example
