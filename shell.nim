@@ -24,6 +24,7 @@ type
 type
   ShellExecError* = ref object of CatchableError
     cmd*: string ## Command that returned non-zero exit code
+    cwd*: string ## Absolute path of initial command execution directory
     retcode*: int ## Exit code
     errstr*: string ## Stderr for command
     outstr*: string ## Stdout for command
@@ -310,6 +311,7 @@ proc execShell*(
   if dokCommand in debugConfig:
     echo "shellCmd: ", cmd
 
+  let cwd = getCurrentDir()
   result = asgnShell(cmd, debugConfig)
 
   if dokOutput in debugConfig:
@@ -325,6 +327,7 @@ proc execShell*(
       raise ShellExecError(
         msg: "Command " & cmd & " exited with non-zero code",
         cmd: cmd,
+        cwd: cwd,
         retcode: result.exitCode,
         errstr: result.error,
         outstr: result.output
