@@ -54,7 +54,7 @@ const defaultDebugConfig: set[DebugOutputKind] =
     config
 
 proc stringify(cmd: NimNode): string
-proc iterateTree(cmds: NimNode): string
+proc iterateTree(cmds: NimNode, joinBy = " "): string
 
 proc replaceInfixKind(ifKind: InfixKind): string =
   case ifKind
@@ -110,41 +110,52 @@ proc rawString(n: NimNode): string =
   expectKind n, nnkAccQuoted
   result = "\"" & n[0].strVal & "\""
 
-proc parensUnquotePrefix(n: NimNode): string =
-  ## For the new `()` Nim identifier quoting syntax handles the checks
-  ## for the appearance of `$` and converts to quoting via &{} macro.
-  # TODO: simplify, maybe combine parts with `stringify` again!
-  case n.kind
-  of nnkInfix:
-    # If `n` is `infix` it's probably something like
-    # `"--out=($myIdent)"`. Thus we reorder the infix and concat the
-    # unquoted identifier to the string literal
-    let fixed = n.handleInfix
-    if eqIdent(fixed[1], "$"):
-      expectKind fixed[1], nnkIdent
-      result = stringify(fixed[0]) & "{" & fixed[2].repr & "}"
+proc handleQuote(n: NimNode): NimNode =
+  ## reconstruct a tree with `$` prefix / infix replaced by
+  ## curly of repr
+  proc addArg(res: var NimNode, n: NimNode) =
+    let arg = handleQuote(n)
+    case arg.kind
+    of nnkIdentDefs, nnkCommand:
+      res.add nnkCurly.newTree(arg[0])
+      res.add arg[1]
     else:
-      error("Unsupported symbol in parenthesis quote: " & $n.repr)
-  of nnkPrefix:
-    # If it's a prefix it's the usual `$` at the beginning of the `()`.
-    # However, if something follows right after the quoted idenfitier without
-    # a space, it'll be a
-    # - `nnkCallStrLit` for `($dir".tar.gz")` <- no space
-    # - `nnkCommand` for ``($(someExpr)"someString")` <- no space
-    if eqIdent(n[0], "$"):
-      case n[1].kind
-      of nnkCommand, nnkCallStrLit:
-        doAssert n[1][0].kind in {nnkIdent, nnkPar}
-        result = "{" & n[1][0].repr & "}" & stringify(n[1][1])
-      else:
-        result = "{" & n[1].repr & "}"
-    else:
-      error("Unsupported symbol in parenthesis quote: " & $n.repr)
-  of nnkCommand:
-    result = stringify(n[0]) & " " & parensUnquotePrefix(n[1])
+      res.add nnkCurly.newTree(arg)
+
+  if n.len == 0:
+    result = n # keep node
   else:
-    error("Unsupported node kind " & $n.kind & " in `parensUnquotePrefix`: " &
-      n.repr)
+    # if tree, modify from existing form replacing `$` calls by `nnkCurly`
+    case n.kind
+    of nnkPrefix:
+      if eqIdent(n[0], "$"): # if `$` prefix, rewrite to reordered nnkIdentDefs
+        result = nnkIdentDefs.newTree()
+        result.addArg(n[1])
+      else:
+        result = n
+    of nnkCallStrLit:
+      # `$foo"someString"` rewrite to ident defs
+      result = nnkIdentDefs.newTree(handleQuote(n[0]), handleQuote(n[1]))
+    of nnkCommand:
+      # `"someString"$foo` rewrite to ident defs
+      result = nnkCommand.newTree(handleQuote(n[0]), handleQuote(n[1]))
+    of nnkInfix:
+      if eqIdent(n[0], "$"):
+        # reorder infix and rewrite as nnkIdentDefs
+        result = nnkIdentDefs.newTree()
+        result.add handleQuote(n[1])
+        result.addArg(n[2])
+      else:
+        result = n
+    else:
+      # keep as is, possibly replace children
+      result = newTree(n.kind)
+      for ch in n:
+        result.add handleQuote(ch)
+
+proc parensUnquotePrefix(n: NimNode): string =
+  let res = handleQuote(n)
+  result = stringify(res)
 
 proc nimSymbol(n: NimNode, useParens: static bool): string =
   ## converts the identifier given in accented quotes to a Nim symbol
@@ -194,6 +205,8 @@ proc stringify(cmd: NimNode): string =
     result = handleDotExpr(cmd)
   of nnkStrLit, nnkTripleStrLit, nnkRStrLit:
     result = cmd.strVal
+  of nnkCallStrLit:
+    result = stringify(cmd[0]) & stringify(cmd[1])
   of nnkIntLit, nnkFloatLit:
     result = cmd.repr
   of nnkVarTy, nnkMutableTy:
@@ -201,6 +214,11 @@ proc stringify(cmd: NimNode): string =
     result = handleVarTy(cmd)
   of nnkInfix:
     result = recurseInfix(cmd)
+  of nnkCurly:
+    doAssert cmd.len == 1
+    result = "{" & cmd[0].repr & "}"
+  of nnkIdentDefs:
+    result = iterateTree(cmd, joinBy = "")
   of nnkAccQuoted:
     # handle accented quotes. Allows to either have the content be put into
     # a raw string literal, or if prefixed by `$` assumed to be a Nim symbol
@@ -225,18 +243,17 @@ proc stringify(cmd: NimNode): string =
     error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
       ". Consider putting offending part into \" \".")
 
-proc iterateTree(cmds: NimNode): string =
+proc iterateTree(cmds: NimNode, joinBy = " "): string =
   ## main proc which iterates over tree and assigns assigns the correct
   ## strings to `subCmds` depending on NimNode kind
   var subCmds: seq[string]
   for cmd in cmds:
     subCmds.add stringify(cmd)
-  result = subCmds.join(" ")
+  result = subCmds.join(joinBy)
 
 proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
-
 
 proc asgnShell*(
   cmd: string,

@@ -63,7 +63,6 @@ suite "[shell]":
     do:
       "./reconstruction Run123 --out"
 
-
   test "[shell] single cmd w/ tripleStrLit to escape \" ":
     checkShell:
       ./reconstruction Run123 """--out="test.h5""""
@@ -247,6 +246,20 @@ suite "[shell]":
       ./test ("--in="$(path.extractFilename))
     do:
       &"./test --in={path.extractFilename}"
+
+  test "[shell] quoting a Nim expression, prepending and appending to it":
+    let name = "foo"
+    checkShell:
+      Rscript -e ("rmarkdown::render('"$name"')")
+    do:
+      &"Rscript -e rmarkdown::render('foo')"
+
+  test "[shell] quoting a Nim expression, prepending and appending to it, literal string":
+    let name = "foo"
+    checkShell:
+      Rscript -e ("\"rmarkdown::render('"$name"""')"""")
+    do:
+      &"Rscript -e \"rmarkdown::render('foo')\""
 
   test "[shell] quoting a Nim expression without anything else":
     let myCmd = "runMe"
