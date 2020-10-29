@@ -196,7 +196,8 @@ proc stringify(cmd: NimNode): string =
     result = cmd.strVal
   of nnkIntLit, nnkFloatLit:
     result = cmd.repr
-  of nnkVarTy:
+  of nnkVarTy, nnkMutableTy:
+    # `nnkMutableTy` required for https://github.com/nim-lang/Nim/issues/15751
     result = handleVarTy(cmd)
   of nnkInfix:
     result = recurseInfix(cmd)
