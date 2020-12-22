@@ -551,8 +551,9 @@ macro shellAssign*(cmd: untyped): untyped =
   let cmds = nnkIdentDefs.newTree(cmd[0][1])
   let shCmd = genShellCmds(cmds)[0]
 
+  let qCmd = nilOrQuote(shCmd)
   result = quote do:
-    `nimSym` = asgnShell(`shCmd`)[0]
+    `nimSym` = asgnShell(`qCmd`)[0]
 
   when defined(debugShell):
     echo result.repr
