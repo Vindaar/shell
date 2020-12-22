@@ -284,6 +284,14 @@ suite "[shell]":
       # test is super flaky on travis. Often thee 10 is missing?!
       check res == "8\n9\n10"
 
+  test "[shellAssign] assigning output from shell to a variable while quoting a Nim var":
+    var res = ""
+    let name1 = "Lucian"
+    let name2 = "Markus"
+    shellAssign:
+      res = echo "Hello " ($name1) "and" ($name2)
+    check res == "Hello Lucian and Markus"
+
   test "[shell] real time output":
     shell:
       "for f in 1 2 3; do echo $f; sleep 1; done"
