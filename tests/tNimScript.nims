@@ -90,11 +90,6 @@ do:
 shellEcho:
   ./reconstruction Run123 --out test.h5
 
-shell:
-  touch test1234567890.txt
-  mv test1234567890.txt bar1234567890.txt
-  rm bar1234567890.txt
-
 checkShell:
   one:
     mkdir foo
@@ -241,60 +236,66 @@ block:
   do:
     &"./test --in={path.extractFilename}"
 
-block:
-  # "[shell] quoting a Nim expression without anything else":
-  let myCmd = "runMe"
-  checkShell:
-    ($myCmd)
-  do:
-    $myCmd
+when not defined(windows):
+  shell:
+    touch test1234567890.txt
+    mv test1234567890.txt bar1234567890.txt
+    rm bar1234567890.txt
+
+  block:
+    # "[shell] quoting a Nim expression without anything else":
+    let myCmd = "runMe"
+    checkShell:
+      ($myCmd)
+    do:
+      $myCmd
 
 
-block:
-  var res = ""
-  shellAssign:
-    res = echo `hello`
-  doAssert res == "hello"
+  block:
+    var res = ""
+    shellAssign:
+      res = echo `hello`
+    doAssert res == "hello"
 
-block:
-  var res = ""
-  shellAssign:
-    res = pipe:
-      seq 0 1 10
-      tail -3
-  when not defined(travisCI):
-    doAssert res == "8\n9\n10"
+  block:
+    var res = ""
+    shellAssign:
+      res = pipe:
+        seq 0 1 10
+        tail -3
+    when not defined(travisCI):
+      doAssert res == "8\n9\n10"
 
-block:
-  let ret = shellVerbose:
-    "for f in 1 2 3; do echo $f; sleep 1; done"
-  doAssert ret[0] == "1\n2\n3", "was " & $ret[0]
+  block:
+    let ret = shellVerbose:
+      "for f in 1 2 3; do echo $f; sleep 1; done"
+    doAssert ret[0] == "1\n2\n3", "was " & $ret[0]
 
-block:
-  var toContinue = true
-  template tc(cmd: untyped): untyped {.dirty.} =
-    if toContinue:
-      toContinue = cmd
+  block:
+    var toContinue = true
+    template tc(cmd: untyped): untyped {.dirty.} =
+      if toContinue:
+        toContinue = cmd
 
-  template shellCheck(actions: untyped): untyped =
-    tc:
-      let res = shellVerbose:
-        actions
-      res[1] == 0
+    template shellCheck(actions: untyped): untyped =
+      tc:
+        let res = shellVerbose:
+          actions
+        res[1] == 0
 
-  shellCheck:
-    one:
-      "f=hallo"
-      echo $f
-  doAssert toContinue
+    shellCheck:
+      one:
+        "f=hallo"
+        echo $f
+    doAssert toContinue
 
-block:
-  let res = shellVerbose:
-    echo runBrokenCommand
-    thisCommandDoesNotExistOnYourSystemOrThisTestWillFail
-    echo Hello
-  doAssert res[1] != 0
-  echo res[0]
-  doAssert res[0].startsWith("runBrokenCommand")
+  block:
+    let res = shellVerbose:
+      echo runBrokenCommand
+      thisCommandDoesNotExistOnYourSystemOrThisTestWillFail
+      echo Hello
+    doAssert res[1] != 0
+    echo res[0]
+    doAssert res[0].startsWith("runBrokenCommand")
 
 echo "All tests passed using NimScript!"

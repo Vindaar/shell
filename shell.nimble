@@ -17,10 +17,12 @@ task test, "executes the tests":
   exec "nim e -d:debugShell -r tests/tNimScript.nims"
   # and execute PWD test, by running the nims file in another dir,
   # which itself calls the test
-  exec "cd tests/anotherDir && nim e -r runAnotherTest.nims"
+  when not defined(windows):
+    exec "cd tests/anotherDir && nim e -r runAnotherTest.nims"
 
 task travis, "executes the tests on travis":
   exec "nim c -d:debugShell -d:travisCI -r tests/tShell.nim"
   # execute using NimScript as well
   exec "nim e -d:debugShell -d:travisCI -r tests/tNimScript.nims"
-  exec "cd tests/anotherDir && nim e -d:travisCI -r runAnotherTest.nims"
+  when not defined(windows):
+    exec "cd tests/anotherDir && nim e -d:travisCI -r runAnotherTest.nims"
