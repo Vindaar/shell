@@ -404,19 +404,27 @@ proc nilOrQuote(cmd: string): NimNode =
     result = newLit(cmd)
 
 macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
-  ## a mini DSL to write shell commands in Nim. Some constructs are not
-  ## implemented. If in doubt, put (parts of) the command into " "
-  ## The command is echoed before it is run. It is prefixed by `shellCmd:`.
+  ## A mini DSL to write shell commands in Nim. Some constructs are not
+  ## implemented. If in doubt, put (parts of) the command into `" "`
+  ## The command is echoed before it is run. It is prefixed by
+  ## ```
+  ## shellCmd:
+  ## ```
   ## If there is output, the output is echoed. Each successive line of the
-  ## output is prefixed by `shell>`.
+  ## output is prefixed by
+  ## ```
+  ## shell>
+  ## ```
   ## If multiple commands are run in succession (i.e. multiple statements in
   ## the macro body) and one command returns a non-zero exit code, the following
   ## commands will not be run. Instead a warning message will be shown.
+  ##
   ## For usage with NimScript the output can only be echoed after the
   ## call has finished.
+  ##
   ## The macro returns a tuple of:
-  ## - output: string <- output of the shell command to stdout
-  ## - exitCode: int <- the exit code as an integer
+  ## - `output: string` <- output of the shell command to stdout
+  ## - `exitCode: int` <- the exit code as an integer
   expectKind cmds, nnkStmtList
   result = newStmtList()
   let shCmds = genShellCmds(cmds)
@@ -492,7 +500,7 @@ macro shellVerbose*(cmds: untyped): untyped =
       `cmds`
 
 macro shell*(cmds: untyped): untyped =
-  ## a mini DSL to write shell commands in Nim. Some constructs are not
+  ## A mini DSL to write shell commands in Nim. Some constructs are not
   ## implemented. If in doubt, put (parts of) the command into `" "`.
   ##
   ## The command is echoed before it is run. It is prefixed by
