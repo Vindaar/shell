@@ -304,7 +304,17 @@ class="link-seesrc" target="_blank">Source</a>
 <dt><pre><span class="Keyword">macro</span> <a href="#shell.m%2Cuntyped"><span class="Identifier">shell</span></a><span class="Other">(</span><span class="Identifier">cmds</span><span class="Other">:</span> <span class="Identifier">untyped</span><span class="Other">)</span><span class="Other">:</span> <span class="Identifier">untyped</span></pre></dt>
 <dd>
 
-a mini DSL to write shell commands in Nim. Some constructs are not implemented. If in doubt, put (parts of) the command into &quot; &quot; The command is echoed before it is run. It is prefixed by <tt class="docutils literal"><span class="pre">shellCmd: `. If there is output, the output is echoed. Each successive line of the output is prefixed by `shell&gt; `. For usage with NimScript the output can only be echoed after the call has finished. The exit code of the command is dropped. If you wish to inspect the exit code, use `shellVerbose</span></tt> above.
+<p>a mini DSL to write shell commands in Nim. Some constructs are not implemented. If in doubt, put (parts of) the command into <tt class="docutils literal"><span class="pre">&quot; &quot;</span></tt>.</p>
+<p>The command is echoed before it is run. It is prefixed by</p>
+<p><pre class="listing">
+shellCmd:
+</pre> If there is output, the output is echoed. Each successive line of the output is prefixed by</p>
+<p><pre class="listing">
+shell&gt;
+</pre></p>
+<p>For usage with NimScript the output can only be echoed after the call has finished.</p>
+<p>The exit code of the command is dropped. If you wish to inspect the exit code, use <tt class="docutils literal"><span class="pre">shellVerbose</span></tt> above.</p>
+
 &nbsp;&nbsp;<a
 href="https://github.com/Vindaar/shell/tree/master/shell.nim#L494"
 class="link-seesrc" target="_blank">Source</a>
@@ -317,9 +327,9 @@ class="link-seesrc" target="_blank">Source</a>
 
 a helper macro around the proc that generates the shell commands to check whether the commands are as expected It echoes the commands at compile time (the representation of the command) and also the resulting string (taking into account potential) Nim symbol quoting at run time
 &nbsp;&nbsp;<a
-href="https://github.com/Vindaar/shell/tree/master/shell.nim#L507"
+href="https://github.com/Vindaar/shell/tree/master/shell.nim#L516"
 class="link-seesrc" target="_blank">Source</a>
-&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L507" class="link-seesrc" target="_blank" >Edit</a>
+&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L516" class="link-seesrc" target="_blank" >Edit</a>
 
 </dd>
 <a id="checkShell.m,untyped,untyped"></a>
@@ -328,9 +338,9 @@ class="link-seesrc" target="_blank">Source</a>
 
 a wrapper around the shell macro, which can calls <tt class="docutils literal"><span class="pre">unittest.check</span></tt> to check whether construction of the commands works as expected
 &nbsp;&nbsp;<a
-href="https://github.com/Vindaar/shell/tree/master/shell.nim#L524"
+href="https://github.com/Vindaar/shell/tree/master/shell.nim#L533"
 class="link-seesrc" target="_blank">Source</a>
-&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L524" class="link-seesrc" target="_blank" >Edit</a>
+&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L533" class="link-seesrc" target="_blank" >Edit</a>
 
 </dd>
 <a id="shellAssign.m,untyped"></a>
@@ -339,9 +349,9 @@ class="link-seesrc" target="_blank">Source</a>
 
 
 &nbsp;&nbsp;<a
-href="https://github.com/Vindaar/shell/tree/master/shell.nim#L542"
+href="https://github.com/Vindaar/shell/tree/master/shell.nim#L551"
 class="link-seesrc" target="_blank">Source</a>
-&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L542" class="link-seesrc" target="_blank" >Edit</a>
+&nbsp;&nbsp;<a href="https://github.com/Vindaar/shell/edit/master/shell.nim#L551" class="link-seesrc" target="_blank" >Edit</a>
 
 </dd>
 
@@ -354,7 +364,7 @@ class="link-seesrc" target="_blank">Source</a>
       <div class="twelve-columns footer">
         <span class="nim-sprite"></span>
         <br/>
-        <small style="color: var(--hint);">Made with Nim. Generated: 2020-12-27 08:09:25 UTC</small>
+        <small style="color: var(--hint);">Made with Nim. Generated: 2020-12-27 08:16:34 UTC</small>
       </div>
     </div>
   </div>

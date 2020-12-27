@@ -493,12 +493,21 @@ macro shellVerbose*(cmds: untyped): untyped =
 
 macro shell*(cmds: untyped): untyped =
   ## a mini DSL to write shell commands in Nim. Some constructs are not
-  ## implemented. If in doubt, put (parts of) the command into " "
-  ## The command is echoed before it is run. It is prefixed by `shellCmd: `.
+  ## implemented. If in doubt, put (parts of) the command into `" "`.
+  ##
+  ## The command is echoed before it is run. It is prefixed by
+  ## ```
+  ## shellCmd:
+  ## ```
   ## If there is output, the output is echoed. Each successive line of the
-  ## output is prefixed by `shell> `.
+  ## output is prefixed by
+  ## ```
+  ## shell>
+  ## ```
+  ##
   ## For usage with NimScript the output can only be echoed after the
   ## call has finished.
+  ##
   ## The exit code of the command is dropped. If you wish to inspect
   ## the exit code, use `shellVerbose` above.
   result = quote do:
