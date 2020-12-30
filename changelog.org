@@ -1,8 +1,16 @@
 * v0.4.3
 - replace travis CI by Github Actions (now includes Windows and OSX
   testing)
+  - windows support is only partial. =one= and =pipe= appear to be
+    broken
 - change =shellVerboseImpl=, =shellVerbose= internals
-- allow to customize the process options, which are handed to =startProcess=
+- allow to customize the process options, which are handed to
+  =startProcess=
+- command not found on windows is an =OSError=, which we catch and
+  turn into an error code
+- do not close error stream manually anymore (should not be done
+  according to Nim docs of =osproc.errorStream=)
+
 * v0.4.2
 - fix =shellAssign= to allow quoting of Nim variables
 * v0.4.1
