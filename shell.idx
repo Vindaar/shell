@@ -1,0 +1,14 @@
+dokCommand	shell.html#dokCommand	DebugOutputKind.dokCommand	
+dokError	shell.html#dokError	DebugOutputKind.dokError	
+dokOutput	shell.html#dokOutput	DebugOutputKind.dokOutput	
+dokRuntime	shell.html#dokRuntime	DebugOutputKind.dokRuntime	
+DebugOutputKind	shell.html#DebugOutputKind	shell: DebugOutputKind	
+ShellExecError	shell.html#ShellExecError	shell: ShellExecError	
+asgnShell	shell.html#asgnShell,string,set[DebugOutputKind],set[ProcessOption]	shell: asgnShell(cmd: string; debugConfig: set[DebugOutputKind] = defaultDebugConfig;\n          options: set[ProcessOption] = defaultProcessOptions): tuple[\n    output, error: string, exitCode: int]	
+execShell	shell.html#execShell,string,set[DebugOutputKind],set[ProcessOption]	shell: execShell(cmd: string; debugConfig: set[DebugOutputKind] = defaultDebugConfig;\n          options: set[ProcessOption] = defaultProcessOptions): tuple[\n    output, error: string, exitCode: int]	
+shellVerbose	shell.html#shellVerbose.m,varargs[untyped]	shell: shellVerbose(args: varargs[untyped]): untyped	
+shellVerboseErr	shell.html#shellVerboseErr.m,varargs[untyped]	shell: shellVerboseErr(args: varargs[untyped]): untyped	
+shell	shell.html#shell.m,untyped	shell: shell(cmds: untyped): untyped	
+shellEcho	shell.html#shellEcho.m,untyped	shell: shellEcho(cmds: untyped): untyped	
+checkShell	shell.html#checkShell.m,untyped,untyped	shell: checkShell(cmds: untyped; exp: untyped): untyped	
+shellAssign	shell.html#shellAssign.m,untyped	shell: shellAssign(cmd: untyped): untyped	
