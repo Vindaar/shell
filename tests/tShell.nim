@@ -345,3 +345,15 @@ suite "[shell]":
 
       doAssert test == res
       doAssert test == err
+
+    test "[shellVerboseErr] setting debug config works":
+      let test = "test"
+      let (res, err, _) = shellVerboseErr {dokOutput}:
+        echo ($test)
+
+      doAssert test == res
+
+    test "[shellVerbose] change process options":
+      let (res, err) = shellVerbose(options = {poEvalCommand}):
+        echo "Hello World"
+      check res == "Hello World"
