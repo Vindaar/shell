@@ -2,6 +2,12 @@ import macros
 when not defined(NimScript):
   import osproc, streams, os
   export osproc
+else:
+  type
+    # dummy enum, which has no effect on NimScript
+    ProcessOption* = enum
+      poEchoCmd, poUsePath, poEvalCommand, poStdErrToStdOut, poParentStreams,
+      poInteractive, poDaemon
 import strutils, strformat
 export strformat
 
