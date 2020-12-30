@@ -307,10 +307,8 @@ proc asgnShell*(
 
     # Zero exit code does not guarantee that there will be nothing in
     # stderr.
-
     let err = pid.errorStream
     let errorText = err.readAll()
-    err.close()
 
     if exitCode != 0:
       if dokRuntime in debugConfig:
