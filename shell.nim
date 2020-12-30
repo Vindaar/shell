@@ -276,7 +276,17 @@ proc asgnShell*(
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
-    let pid = startProcess(cmd, options = options)
+    when defined(windows):
+      var pid: Process
+      try:
+        pid = startProcess(cmd, options = options)
+      except OSError as e:
+        let exitCode = 1
+        let err = e.msg
+        return (output: "", error: err, exitCode: exitCode)
+    else:
+      let pid = startProcess(cmd, options = options)
+
     let outStream = pid.outputStream
     var line = ""
     var res = ""

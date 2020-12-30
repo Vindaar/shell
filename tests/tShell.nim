@@ -277,15 +277,17 @@ suite "[shell]":
       res = echo `hello`
     check res == "hello"
 
-  test "[shellAssign] assigning output of a shell pipe to a Nim var":
-    var res = ""
-    shellAssign:
-      res = pipe:
-        seq 0 1 10
-        tail -3
-    when not defined(travisCI):
-      # test is super flaky on travis. Often thee 10 is missing?!
-      check res.multiReplace([("\n", "")]) == "8910"
+  when not defined(windows):
+    ## `pipe` does not work on windows
+    test "[shellAssign] assigning output of a shell pipe to a Nim var":
+      var res = ""
+      shellAssign:
+        res = pipe:
+          seq 0 1 10
+          tail -3
+      when not defined(travisCI):
+        # test is super flaky on travis. Often thee 10 is missing?!
+        check res.multiReplace([("\n", "")]) == "8910"
 
   test "[shellAssign] assigning output from shell to a variable while quoting a Nim var":
     var res = ""
@@ -310,23 +312,25 @@ suite "[shell]":
     check res[0] == "Hello world!"
     check res[1] == 0
 
-  test "[shellVerbose] remove nested StmtLists":
-    var toContinue = true
-    template tc(cmd: untyped): untyped {.dirty.} =
-      if toContinue:
-        toContinue = cmd
+  when not defined(windows):
+    ## `one` command does not work on windows
+    test "[shellVerbose] remove nested StmtLists":
+      var toContinue = true
+      template tc(cmd: untyped): untyped {.dirty.} =
+        if toContinue:
+          toContinue = cmd
 
-    template shellCheck(actions: untyped): untyped =
-      tc:
-        let res = shellVerbose:
-          actions
-        res[1] == 0
+      template shellCheck(actions: untyped): untyped =
+        tc:
+          let res = shellVerbose:
+            actions
+          res[1] == 0
 
-    shellCheck:
-      one:
-        "f=hallo"
-        echo $f
-    check toContinue
+      shellCheck:
+        one:
+          "f=hallo"
+          echo $f
+      check toContinue
 
   test "[shellVerbose] check commands are not run after failure":
     let res = shellVerbose:
@@ -336,14 +340,16 @@ suite "[shell]":
     check res[1] != 0
     check res[0].startsWith("runBrokenCommand")
 
-  test "[shellVerboseErr] check stderr output":
-    let test = "test"
-    let (res, err, _) = shellVerboseErr:
-      echo ($test)
-      echo ($test) >&2
+  when not defined(windows):
+    ## stderr redirect does not work on windows?
+    test "[shellVerboseErr] check stderr output":
+      let test = "test"
+      let (res, err, _) = shellVerboseErr:
+        echo ($test)
+        echo ($test) >&2
 
-    doAssert test == res
-    doAssert test == err
+      doAssert test == res
+      doAssert test == err
 
   test "[shellVerboseErr] setting debug config works":
     let test = "test"
