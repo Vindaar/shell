@@ -59,6 +59,9 @@ const defaultDebugConfig: set[DebugOutputKind] =
     config
 
 const defaultProcessOptions: set[ProcessOption] = {poStdErrToStdOut, poEvalCommand}
+# this default is used for `shellVerboseErr` where we do ``not`` want to combine stdout
+# and stderr.
+const defaultProcessOptionsErr: set[ProcessOption] = {poEvalCommand}
 
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode, joinBy = " "): string
@@ -453,6 +456,7 @@ proc shellVerboseImpl(debugConfig: NimNode,
   if combineOutAndErr:
     # possibly combine stdout & stderr by appending the latter and return 2 tuple
     resBody.add quote do:
+      ## TODO: this should not be necessary if we hand `poStdErrToStdOut` no?
       `outputSym` = `outputSym` & `outerrSym`
       (`outputSym`, `exCodeSym`)
   else:
@@ -536,7 +540,10 @@ proc parseShellVerboseArgs(combineOutAndErrDefault: bool,
   if cfgArg.isNil:
     cfgArg = newLit defaultDebugConfig
   if optArg.isNil:
-    optArg = newLit defaultProcessOptions
+    if combineOutAndErrDefault:
+      optArg = newLit defaultProcessOptions
+    else:
+      optArg = newLit defaultProcessOptionsErr
   result = (cfgArg, optArg, combineOutAndErr, cmds)
 
 macro shellVerbose*(args: varargs[untyped]): untyped =
