@@ -58,7 +58,10 @@ const defaultDebugConfig: set[DebugOutputKind] =
 
     config
 
-const defaultProcessOptions: set[ProcessOption] = {poStdErrToStdOut, poEvalCommand}
+when defined(windows):
+  const defaultProcessOptions: set[ProcessOption] = {poStdErrToStdOut, poEvalCommand, poDaemon, poUsePath}
+else:
+  const defaultProcessOptions: set[ProcessOption] = {poStdErrToStdOut, poEvalCommand}
 # this default is used for `shellVerboseErr` where we do ``not`` want to combine stdout
 # and stderr.
 const defaultProcessOptionsErr: set[ProcessOption] = {poEvalCommand}
