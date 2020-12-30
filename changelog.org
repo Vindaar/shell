@@ -1,2 +1,9 @@
+* v0.4.3
+- replace travis CI by Github Actions (now includes Windows and OSX
+  testing)
+- change =shellVerboseImpl=, =shellVerbose= internals
+- allow to customize the process options, which are handed to =startProcess=
+* v0.4.2
+- fix =shellAssign= to allow quoting of Nim variables
 * v0.4.1
 - improve handling of complicated quoting expressions
