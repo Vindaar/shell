@@ -1,6 +1,7 @@
 import macros
 when not defined(NimScript):
   import osproc, streams, os
+  export osproc
 import strutils, strformat
 export strformat
 
@@ -19,7 +20,6 @@ type
     dokError
     dokOutput
     dokRuntime
-
 
 type
   ShellExecError* = ref object of CatchableError
@@ -50,8 +50,9 @@ const defaultDebugConfig: set[DebugOutputKind] =
     when defined shellThrowException:
       config = {}
 
-
     config
+
+const defaultProcessOptions: set[ProcessOption] = {poStdErrToStdOut, poEvalCommand}
 
 proc stringify(cmd: NimNode): string
 proc iterateTree(cmds: NimNode, joinBy = " "): string
@@ -257,12 +258,13 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
 
 proc asgnShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind] = defaultDebugConfig
+  debugConfig: set[DebugOutputKind] = defaultDebugConfig,
+  options: set[ProcessOption] = defaultProcessOptions
               ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
   when not defined(NimScript):
-    let pid = startProcess(cmd, options = {poEvalCommand})
+    let pid = startProcess(cmd, options = options)
     let outStream = pid.outputStream
     var line = ""
     var res = ""
@@ -311,6 +313,7 @@ proc asgnShell*(
 
     pid.close()
     result = (output: res, error: errorText, exitCode: exitCode)
+
   else:
     # prepend the NimScript called command by current directory
     let nscmd = &"cd {getCurrentDir()} && " & cmd
@@ -322,7 +325,8 @@ proc asgnShell*(
 
 proc execShell*(
   cmd: string,
-  debugConfig: set[DebugOutputKind] = defaultDebugConfig
+  debugConfig: set[DebugOutputKind] = defaultDebugConfig,
+  options: set[ProcessOption] = defaultProcessOptions
               ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `asgnShell`, which calls the commands and handles
   ## return values.
@@ -330,7 +334,7 @@ proc execShell*(
     echo "shellCmd: ", cmd
 
   let cwd = getCurrentDir()
-  result = asgnShell(cmd, debugConfig)
+  result = asgnShell(cmd, debugConfig, options)
 
   if dokOutput in debugConfig:
     when defined(NimScript):
@@ -403,28 +407,12 @@ proc nilOrQuote(cmd: string): NimNode =
   else:
     result = newLit(cmd)
 
-macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
-  ## A mini DSL to write shell commands in Nim. Some constructs are not
-  ## implemented. If in doubt, put (parts of) the command into `" "`
-  ## The command is echoed before it is run. It is prefixed by
-  ## ```
-  ## shellCmd:
-  ## ```
-  ## If there is output, the output is echoed. Each successive line of the
-  ## output is prefixed by
-  ## ```
-  ## shell>
-  ## ```
-  ## If multiple commands are run in succession (i.e. multiple statements in
-  ## the macro body) and one command returns a non-zero exit code, the following
-  ## commands will not be run. Instead a warning message will be shown.
-  ##
-  ## For usage with NimScript the output can only be echoed after the
-  ## call has finished.
-  ##
-  ## The macro returns a tuple of:
-  ## - `output: string` <- output of the shell command to stdout
-  ## - `exitCode: int` <- the exit code as an integer
+proc shellVerboseImpl(debugConfig: NimNode,
+                      options: NimNode,
+                      combineOutAndErr: bool,
+                      cmds: NimNode): NimNode =
+  ## This is the compile time proc, which creates the actual code of the shell macro.
+  ## Depending on `combineOutAndErr` it returns either a 2 tuple or a 3 tuple.
   expectKind cmds, nnkStmtList
   result = newStmtList()
   let shCmds = genShellCmds(cmds)
@@ -444,7 +432,7 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
     result.add quote do:
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
-        let tmp = execShell(`qCmd`, `debugConfig`)
+        let tmp = execShell(`qCmd`, `debugConfig`, `options`)
         `outputSym` = `outputSym` & tmp[0]
         `outerrSym` = tmp[1]
         `exCodeSym` = tmp[2]
@@ -454,19 +442,137 @@ macro shellVerboseImpl*(debugConfig, cmds: untyped): untyped =
             `qCmd` &
             "` due to failure in previous command!"
 
-  # put everything in a block and return the result
+  var resBody: NimNode = newStmtList()
+  resBody.add result
+  if combineOutAndErr:
+    # possibly combine stdout & stderr by appending the latter and return 2 tuple
+    resBody.add quote do:
+      `outputSym` = `outputSym` & `outerrSym`
+      (`outputSym`, `exCodeSym`)
+  else:
+    # define the tuple 3 tuple we return in case we keep error
+    resBody.add quote do:
+      (`outputSym`, `outerrSym`, `exCodeSym`)
   result = quote do:
     block:
-      `result`
-      (`outputSym`, `outerrSym`, `exCodeSym`)
+      `resBody`
 
   when defined(debugShell):
     echo result.repr
 
+template parseTmpl(procName, enumType, name: untyped): untyped =
+  proc `procName`(n: NimNode): NimNode =
+    case n.kind
+    of nnkIdent, nnkSym: result = n
+    of nnkCurly:
+      for ch in n:
+        # check if this can be parsed as `DebugOutputKind`
+        case ch.kind
+        of nnkIdent:
+          discard parseEnum[enumType](ch.strVal)
+        of nnkCall:
+          doAssert ch[0].strVal == astToStr(enumType)
+        of nnkSym:
+          # we trust that this is a valid symbol for an enum field
+          discard
+        else:
+          error("Argument to `" & $name & "` in curly must be an identifier corresponding " &
+            "to a field of `" & astToStr(enumType) & "`! Argument is: " &
+            $(ch.repr) & " of kind " & $(ch.kind))
+      result = n
+    else:
+      error("Invalid node kind for `" & $name & "`: " & $n.kind & "!")
 
-macro shellVerboseErr*(debugConfig, cmds: untyped): untyped =
-  ## Run shell command, return `(stdout, stderr, code)`. `debugConfig`
-  ## is an configuration for shell execution
+parseTmpl(parseDebugConfig, DebugOutputKind, "debug")
+parseTmpl(parseProcessOptions, ProcessOption, "options")
+
+proc parseCombineAndErr(n: NimNode): bool =
+  case n.kind
+  of nnkIdent, nnkSym: result = parseBool(n.strVal)
+  else:
+    error("Invalid argument to `combineOutAndErr` in `shellVerbose`! Requires a " &
+      "bool literal!")
+
+proc parseShellVerboseArgs(combineOutAndErrDefault: bool,
+                           args: NimNode): (NimNode, NimNode, bool, NimNode) =
+  var
+    cmds: NimNode
+    cfgArg: NimNode
+    optArg: NimNode
+    combineOutAndErr: bool = combineOutAndErrDefault # default is true
+  expectKind(args, nnkArglist)
+  expectKind(args[args.len - 1], nnkStmtList)
+  var idx = 0
+  for arg in args:
+    case arg.kind
+    of nnkExprEqExpr:
+      let argStr = arg[0].strVal
+      case argStr
+      of "debug", "debugConfig":
+        cfgArg = parseDebugConfig(arg[1])
+      of "options", "processOptions":
+        optArg = parseProcessOptions(arg[1])
+      of "combineOutAndErr":
+        combineOutAndErr = parseCombineAndErr(arg[1])
+    of nnkCurly:
+      if idx == 0:
+        cfgArg = parseDebugConfig(arg)
+      elif idx == 1:
+        optArg = parseProcessOptions(arg)
+      else:
+        error("Invalid unnamed argument at index " & $idx & "!")
+    of nnkStmtList, nnkIdent:
+      cmds = arg
+    else:
+      error("Invalid node kind encountered while parsing args of `shellVerbose`! " &
+        "Node is " & $(arg.repr) & " of kind " & $(arg.kind))
+    inc idx
+  if cfgArg.isNil:
+    cfgArg = newLit defaultDebugConfig
+  if optArg.isNil:
+    optArg = newLit defaultProcessOptions
+  result = (cfgArg, optArg, combineOutAndErr, cmds)
+
+macro shellVerbose*(args: varargs[untyped]): untyped =
+  ## See the `shell` macro below for a general explanation.
+  ##
+  ## This macro differs from `shell` in as such that it
+  ## 1. returns a tuple of
+  ##   - `output: string` <- output of the shell command to stdout
+  ##   - `exitCode: int` <- the exit code as an integer
+  ## 2. allows to customize the error output behavior by handing the
+  ## argument `debugConfig` (see below) as well as the process options
+  ## with which `startProcess` is called by using the `options` argument.
+  ##
+  ## As you notice the macro signature is `args: varargs[untyped]`. This
+  ## macro parses the given arguments manually (to allow multiple named arguments
+  ## in an untyped macro). If the arguments are not named, they are expected
+  ## in the order as shown below. `combineOutAndErr` has to be named!
+  ##
+  ## The following arguments are possible:
+  ## - `debug`, `debugConfig`: a set of `DebugOutputKind`
+  ## - `options`, `processOptions`: a set of `ProcessOption` (see `stdlib.osproc`)
+  ## - `combineOutAndErr`: a static bool to decide if the macro should return a
+  ##   2 tuple of `(output: string, errCode: int)` (`stderr` is appended to `stdout`)
+  ##   or a 3 tuple of `(output, outerr: string, errCode: int)` (`stderr` separate)
+  ##   The latter can also be had by using the `shellVerboseErr` overload below.
+  runnableExamples:
+    let (res, code) = shellVerbose(debug = {dokCommand}, options = {poEvalCommand},
+                                   combineOutAndErr = true):
+      echo "test"
+
+    assert res == "test"
+    assert code == 0
+
+  let (cfgArg, optArg, combineOutAndErr, cmds) = parseShellVerboseArgs(
+    combineOutAndErrDefault = true,
+    args
+  )
+  result = shellVerboseImpl(cfgArg, optArg, combineOutAndErr = combineOutAndErr, cmds)
+
+macro shellVerboseErr*(args: varargs[untyped]): untyped =
+  ## Run shell command, return `(stdout, stderr, code)`. This is an overload
+  ## of `shellVerbose` with `combineOutAndErr = false` by default.
   runnableExamples:
     let (res, err, code) = shellVerboseErr {dokCommand}:
       echo "test"
@@ -474,30 +580,11 @@ macro shellVerboseErr*(debugConfig, cmds: untyped): untyped =
     assert res == "test"
     assert code == 0
 
-  quote do:
-    shellVerboseImpl `debugConfig`:
-      `cmds`
-
-macro shellVerboseErr*(cmds: untyped): untyped =
-  quote do:
-    shellVerboseImpl defaultDebugConfig:
-      `cmds`
-
-macro shellVerbose*(debugConfig, cmds: untyped): untyped =
-  quote do:
-    block:
-      var res: tuple[output: string, code: int]
-      let (outStr, outErr, code) = shellVerboseImpl `debugConfig`:
-        `cmds`
-
-      res.output = outStr & outErr
-      res.code = code
-      res
-
-macro shellVerbose*(cmds: untyped): untyped =
-  quote do:
-    shellVerbose defaultDebugConfig:
-      `cmds`
+  let (cfgArg, optArg, combineOutAndErr, cmds) = parseShellVerboseArgs(
+    combineOutAndErrDefault = false,
+    args
+  )
+  result = shellVerboseImpl(cfgArg, optArg, combineOutAndErr = combineOutAndErr, cmds)
 
 macro shell*(cmds: untyped): untyped =
   ## A mini DSL to write shell commands in Nim. Some constructs are not
@@ -513,13 +600,18 @@ macro shell*(cmds: untyped): untyped =
   ## shell>
   ## ```
   ##
+  ## If multiple commands are run in succession (i.e. multiple statements in
+  ## the macro body) and one command returns a non-zero exit code, the following
+  ## commands will not be run. Instead a warning message will be shown.
+  ##
   ## For usage with NimScript the output can only be echoed after the
   ## call has finished.
   ##
   ## The exit code of the command is dropped. If you wish to inspect
   ## the exit code, use `shellVerbose` above.
   result = quote do:
-    discard shellVerbose(`cmds`)
+    discard shellVerbose(debug = defaultDebugConfig, options = defaultProcessOptions):
+      `cmds`
 
 macro shellEcho*(cmds: untyped): untyped =
   ## a helper macro around the proc that generates the shell commands
