@@ -69,6 +69,12 @@ suite "[shell]":
     do:
       "./reconstruction Run123 --out=\"test.h5\""
 
+  test "[shell] single cmd with `nnkAsgn`":
+    checkShell:
+      ./reconstruction Run123 --out=test.h5 --foo
+    do:
+      "./reconstruction Run123 --out=test.h5 --foo"
+
   test "[shell] command with a redirect":
     checkShell:
       echo """"test file"""" > test.txt
