@@ -1,3 +1,6 @@
+* v0.4.4
+- allow (single) `nnkAsgn` in macro, e.g. to write
+  =foo --option=value --more=. Note that only a single assignment is valid.
 * v0.4.3
 - replace travis CI by Github Actions (now includes Windows and OSX
   testing)
