@@ -416,8 +416,8 @@ proc genShellCmds(cmds: NimNode): seq[string] =
       result.add cmd.stringify
     of nnkAsgn:
       # handle first child, then second
-      let lhs = iterateTree(cmd[0])
-      let rhs = iterateTree(cmd[1])
+      let lhs = stringify(cmd[0])
+      let rhs = stringify(cmd[1])
       result.add concatCmds(@[lhs, rhs], sep = "=")
     else:
       error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
