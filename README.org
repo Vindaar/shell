@@ -320,12 +320,35 @@ shell:
     echo $a
 #+END_SRC
 
-Also if you need assignment via ':' or '=', put it also in quotation
-marks. Say you wish to compile a Nim program, you might want to do:
+Also if you need assignment via `:`, you need to also put it into quotation
+marks, as the Nim tree is not unambiguous enough to properly parse the
+resulting command. Say you wish to compile a Nim program, you might want to do:
 #+BEGIN_SRC nim
 shell:
   nim c "--out:noTest" test.nim
 #+END_SRC
+
+A slightly different case is assignment via `=`. A single `=`
+assignment in a command is possible, but not more. That is due to a
+Nim parser limitation (as you cannot have "nested" `nnkAsgn` nodes).
+
+So this:
+#+begin_src sh
+shel:
+  foo --bar --option=value --more
+#+end_src
+is fine, but this:
+#+begin_src sh
+shell:
+  foo --bar --option=value --secondOption=value2
+#+end_src
+is *not* valid Nim syntax. Fortunately, in most cases the `=` sign is
+optional anyway and you may just drop (one or both):
+#+begin_src sh
+shel:
+  foo --bar --option value --secondOption value2
+#+end_src
+is valid and means the same for most programs.
 
 In general, if in doubt you can just write strings or triple string
 (to pass a ="= to the shell).
