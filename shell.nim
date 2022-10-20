@@ -35,6 +35,28 @@ type
     errstr*: string ## Stderr for command
     outstr*: string ## Stdout for command
 
+  Expect* = object
+    init*: bool # object was initialized
+    expect*: string # the string we expect
+    send*: string # the command we send as a response
+
+  ShellCmd* = object
+    cmds*: seq[string]
+    expects*: seq[Expect]
+
+proc initExpect(init: bool): Expect = Expect(init: init)
+
+proc add(s: var ShellCmd, cmd: string) =
+  s.cmds.add cmd
+
+proc `[]`(s: ShellCmd, idx: int): string = s.cmds[idx]
+
+proc len(s: ShellCmd): int = s.cmds.len
+
+iterator items(s: ShellCmd): string =
+  for cmd in s.cmds:
+    yield cmd
+
 const defaultDebugConfig: set[DebugOutputKind] =
   block:
     var config: set[DebugOutputKind] = {
@@ -252,6 +274,10 @@ proc stringify(cmd: NimNode): string =
     else:
       error("Quoting via () only allowed if compiled without -d:oldQuote!" &
         "Relevant command: " & cmd.repr)
+  of nnkStmtList:
+    doAssert cmd.len == 1, "nnkStmtList should only appear in the context of `expect` or `send` and must " &
+      "only have a single argument. Blocks of commands are not supported."
+    result = stringify(cmd[0])
   else:
     error("Unsupported node kind: " & $cmd.kind & " for command " & cmd.repr &
       ". Consider putting offending part into \" \".")
@@ -268,8 +294,13 @@ proc concatCmds(cmds: seq[string], sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmds.join(sep)
 
+proc concatCmds(cmd: ShellCmd, sep = " && "): string =
+  ## concat commands to single string, by default via `&&`
+  result = cmd.cmds.join(sep)
+
 proc asgnShell*(
   cmd: string,
+  expects: var seq[Expect],
   debugConfig: set[DebugOutputKind] = defaultDebugConfig,
   options: set[ProcessOption] = defaultProcessOptions
               ): tuple[output, error: string, exitCode: int] =
@@ -288,8 +319,10 @@ proc asgnShell*(
       let pid = startProcess(cmd, options = options)
 
     let outStream = pid.outputStream
+    let inStream = pid.inputStream
     var line = ""
     var res = ""
+    var exp = if expects.len > 0: expects.pop else: initExpect(init = false)
     while pid.running:
       try:
         let streamRes = outStream.readLine(line)
@@ -297,6 +330,12 @@ proc asgnShell*(
           if dokOutput in debugConfig:
             echo "shell> ", line
           res = res & "\n" & line
+          # now check if we expect a line and this line matches
+          if exp.expect.len > 0 and
+             (line == exp.expect or line.startsWith(exp.expect) or line.endsWith(exp.expect)):
+            inStream.write(exp.send & "\n")
+            inStream.flush()
+            exp = if expects.len > 0: expects.pop else: initExpect(init = false)
         else:
           # should mean stream is finished, i.e. process stoped
           sleep 10
@@ -315,6 +354,9 @@ proc asgnShell*(
           echo "shell> ", line
       else:
         res &= outStream.readAll()
+
+    if exp.init: # if `exp` is still initialized, it means it wasn't consumed
+      expects.insert(exp, 0)
 
     let exitCode = pid.peekExitCode
 
@@ -345,6 +387,7 @@ proc asgnShell*(
 
 proc execShell*(
   cmd: string,
+  expects: var seq[Expect], ## mutable as we pop each element if we encounter the `expect`
   debugConfig: set[DebugOutputKind] = defaultDebugConfig,
   options: set[ProcessOption] = defaultProcessOptions
               ): tuple[output, error: string, exitCode: int] =
@@ -354,7 +397,7 @@ proc execShell*(
     echo "shellCmd: ", cmd
 
   let cwd = getCurrentDir()
-  result = asgnShell(cmd, debugConfig, options)
+  result = asgnShell(cmd, expects, debugConfig, options)
 
   if dokOutput in debugConfig:
     when defined(NimScript):
@@ -386,11 +429,12 @@ proc flattenCmds(cmds: NimNode): NimNode =
   else:
     result = cmds
 
-proc genShellCmds(cmds: NimNode): seq[string] =
+proc genShellCmds(cmds: NimNode): ShellCmd =
   ## the proc that actually generates the shell commands
   ## from the given statements
   # first strip potential nested StmtLists from input
   let flatCmds = flattenCmds(cmds)
+  var exp = initExpect(init = false)
 
   # iterate over all commands in the command list
   for cmd in flatCmds:
@@ -406,6 +450,14 @@ proc genShellCmds(cmds: NimNode): seq[string] =
         let pipeCmd = genShellCmds(cmd[1])
         # and concat them to a valid string of piped commands
         result.add concatCmds(pipeCmd, sep = " | ")
+      elif eqIdent(cmd[0], "expect"):
+        exp = initExpect(init = true)
+        exp.expect = stringify(cmd[1])
+      elif eqIdent(cmd[0], "send"):
+        doAssert exp.expect.len > 0, "Each `send` must be prepended by an `expect`!"
+        exp.send = stringify(cmd[1])
+        result.expects.add exp
+        exp = initExpect(init = false) # reset the `exp`
     of nnkCommand:
       result.add iterateTree(cmd)
     of nnkIdent, nnkStrLit, nnkTripleStrLit:
@@ -432,6 +484,8 @@ proc nilOrQuote(cmd: string): NimNode =
   else:
     result = newLit(cmd)
 
+
+from std / algorithm import reversed
 proc shellVerboseImpl(debugConfig: NimNode,
                       options: NimNode,
                       combineOutAndErr: bool,
@@ -452,12 +506,15 @@ proc shellVerboseImpl(debugConfig: NimNode,
     var `exCodeSym`: int
     var `outerrSym` = ""
 
+  var expects = shCmds.expects.reversed # reverse so that `pop` gives us first element
   for cmd in shCmds:
     let qCmd = nilOrQuote(cmd)
+    let expId = genSym(nskVar, "expects")
     result.add quote do:
       # use the exit code to determine if next command should be run
       if `exCodeSym` == 0:
-        let tmp = execShell(`qCmd`, `debugConfig`, `options`)
+        var `expId` = @`expects`
+        let tmp = execShell(`qCmd`, `expId`, `debugConfig`, `options`)
         `outputSym` = `outputSym` & tmp[0]
         `outerrSym` = tmp[1]
         `exCodeSym` = tmp[2]
@@ -688,10 +745,18 @@ macro shellAssign*(cmd: untyped): untyped =
   # node 1 is the shell call we make
   let cmds = nnkIdentDefs.newTree(cmd[0][1])
   let shCmd = genShellCmds(cmds)[0]
-
   let qCmd = nilOrQuote(shCmd)
+
+  # now get possible expects separately
+  var expects: seq[Expect] = @[]
+  if cmd.len > 1:
+    expects = genShellCmds(cmd).expects.reversed
+
+  let expId = genSym(nskVar, "expects")
   result = quote do:
-    `nimSym` = asgnShell(`qCmd`)[0]
+    block:
+      var `expId` = @`expects`
+      `nimSym` = asgnShell(`qCmd`, `expId`)[0]
 
   when defined(debugShell):
     echo result.repr
