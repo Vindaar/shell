@@ -80,6 +80,65 @@ shell:
 #+END_SRC
 will work just as expected, echoing =Hallo= in the shell.
 
+** Handling programs that require user input
+
+Some terminal commands will require user input. Starting from version
+=v0.5.0=, basic support for a =expect= / =send= feature is
+available. It allows for functionality similar to the
+[[https://linux.die.net/man/1/expect][=expect(1)= program]].
+
+Let's consider two simple examples. Assuming we have a script that
+reads from =stdin= such as:
+
+=tExpect.sh=:
+#+begin_src sh
+#!/bin/sh
+
+echo "Hello world. Your name?"
+read foo
+echo "Your name is" $foo
+#+end_src
+
+calling this script using the =shell= macro would normally
+#+begin_src nim
+import shell
+shell:
+  ./tExpect.sh
+#+end_src
+cause the nim program to simply stop upon encountering the =read=
+line. Using =expect= / =send= we can handle this:
+
+#+begin_src nim
+import shell
+shell:
+  ./tExpect.sh
+  expect: "Your name?"
+  send: "BaFu"
+#+end_src
+As you notice the =expect= line only contains the second part of the
+last printed line of the shell script. That is because the =expect=
+functionality tries to match the shell output line by line using one
+of the following:
+- the =expect= line matches exactly
+- the line starts with the =expect= line
+- the line ends with the =expect= line (useful for long outputs that
+  end with ="y/N"= like constructs)
+(this may become configurable in the future)
+
+Another example would be installing a nimble package and dealing with
+the possibility of having to upgrade / overwrite package:
+#+begin_src nim
+import shell
+shell:
+  nimble install foo
+  expect: "Overwrite? [y/N]"
+  send: "y"
+#+end_src
+which handles such situations programatically.
+
+*Note*: You may have multiple =expect= / =send= constructs in a single
+=shell= call. But keep in mind that every =expect= must have a =send=.
+
 ** Nim symbol quoting
 
 *NOTE:* In a previous version this was done via accented quotes
