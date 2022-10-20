@@ -1,3 +1,5 @@
+* v0.5.0
+- add =expect= / =send= construct to DSL
 * v0.4.4
 - allow (single) `nnkAsgn` in macro, e.g. to write
   =foo --option=value --more=. Note that only a single assignment is valid.
