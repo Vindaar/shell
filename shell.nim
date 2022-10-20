@@ -695,6 +695,46 @@ macro shell*(cmds: untyped): untyped =
   ##
   ## The exit code of the command is dropped. If you wish to inspect
   ## the exit code, use `shellVerbose` above.
+  ##
+  ## Within the DSL a few extra commands exist.
+  ##
+  ## ```nim
+  ## shell:
+  ##   one:
+  ##     cmd 1
+  ##     cmd 2 ...
+  ## ```
+  ##
+  ## `one` can be used to run multiple commands in the same invocation. Each command
+  ## combined via `&&` in the shell.
+  ##
+  ## ```nim
+  ## shell:
+  ##   pipe:
+  ##     cmd 1
+  ##     cmd 2 ...
+  ## ```
+  ##
+  ## `pipe` can be used to pipe together multiple commands. Each command is combined
+  ## `|` in the shell.
+  ##
+  ## Finally, there is an `expect` / `send` feature, somewhat similar to the `expect(1)`
+  ## program.
+  ##
+  ## ```nim
+  ## shell:
+  ##   commandThatNeedsInput
+  ##   expect: "Some text to match"
+  ##   send: "Some text to answer"
+  ## ```
+  ##
+  ## The code tries to match output line after `commandThatNeedsInput` is run by the
+  ## argument to `expect`. Currently it simply tries to match
+  ## - the whole line
+  ## - only the beginning
+  ## - only the end
+  ## (this will probably become configurable in the future)
+  ## Upon a match, the `send` argument will be sent to the process.
   result = quote do:
     discard shellVerbose(debug = defaultDebugConfig, options = defaultProcessOptions):
       `cmds`
