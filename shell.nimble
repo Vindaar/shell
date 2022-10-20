@@ -19,6 +19,7 @@ task test, "executes the tests":
   # which itself calls the test
   when not defined(windows):
     exec "cd tests/anotherDir && nim e -r runAnotherTest.nims"
+    exec "nim c -r tests/tExpect.nim"
 
 task travis, "executes the tests on travis":
   exec "nim c -d:debugShell -d:travisCI -r tests/tShell.nim"
