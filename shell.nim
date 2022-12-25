@@ -1,4 +1,4 @@
-import macros
+import macros, options
 when not defined(NimScript):
   import osproc, streams, os
   export osproc
@@ -37,7 +37,7 @@ type
 
   Expect* = object
     init*: bool # object was initialized
-    expect*: string # the string we expect
+    expect*: Option[string] # the string we expect
     send*: string # the command we send as a response
 
   ShellCmd* = object
@@ -331,8 +331,12 @@ proc asgnShell*(
             echo "shell> ", line
           res = res & "\n" & line
           # now check if we expect a line and this line matches
-          if exp.expect.len > 0 and
-             (line == exp.expect or line.startsWith(exp.expect) or line.endsWith(exp.expect)):
+          if exp.init and                  # if any
+             (exp.expect.isNone or         # either if we don't expect, just `send`
+              (exp.expect.isSome and       # or if expect text
+                (line == exp.expect.get or # as long as it matches in some sense
+                 line.startsWith(exp.expect.get) or
+                 line.endsWith(exp.expect.get)))):
             inStream.write(exp.send & "\n")
             inStream.flush()
             exp = if expects.len > 0: expects.pop else: initExpect(init = false)
@@ -452,9 +456,10 @@ proc genShellCmds(cmds: NimNode): ShellCmd =
         result.add concatCmds(pipeCmd, sep = " | ")
       elif eqIdent(cmd[0], "expect"):
         exp = initExpect(init = true)
-        exp.expect = stringify(cmd[1])
+        exp.expect = some(stringify(cmd[1]))
       elif eqIdent(cmd[0], "send"):
-        doAssert exp.expect.len > 0, "Each `send` must be prepended by an `expect`!"
+        if exp.expect.isNone: # case without explicit `expect`
+          exp.init = true
         exp.send = stringify(cmd[1])
         result.expects.add exp
         exp = initExpect(init = false) # reset the `exp`
