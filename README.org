@@ -106,7 +106,20 @@ shell:
   ./tExpect.sh
 #+end_src
 cause the nim program to simply stop upon encountering the =read=
-line. Using =expect= / =send= we can handle this:
+line. 
+
+Now we can do just this: 
+#+begin_src nim
+shell:
+  ./tExpect.sh
+  send: "BaFu"
+#+end_src
+
+This goes full rogue mode and just sends "BaFu", regardless what the question is. 
+
+
+You can also specifiy what answer you send to which question.
+By using =expect= / =send= we can handle it this way:
 
 #+begin_src nim
 import shell
