@@ -306,86 +306,94 @@ proc asgnShell*(
               ): tuple[output, error: string, exitCode: int] =
   ## wrapper around `execCmdEx`, which returns the output of the shell call
   ## as a string (stripped of `\n`)
-  when not defined(NimScript):
-    when defined(windows):
-      var pid: Process
-      try:
-        pid = startProcess(cmd, options = options)
-      except OSError as e:
-        let exitCode = 1
-        let err = e.msg
-        return (output: "", error: err, exitCode: exitCode)
-    else:
-      let pid = startProcess(cmd, options = options)
-
-    let outStream = pid.outputStream
-    let inStream = pid.inputStream
-    var line = ""
-    var res = ""
-    var exp = if expects.len > 0: expects.pop else: initExpect(init = false)
-    while pid.running:
-      try:
-        let streamRes = outStream.readLine(line)
-        if streamRes:
-          if dokOutput in debugConfig:
-            echo "shell> ", line
-          res = res & "\n" & line
-          # now check if we expect a line and this line matches
-          if exp.init and                  # if any
-             (exp.expect.isNone or         # either if we don't expect, just `send`
-              (exp.expect.isSome and       # or if expect text
-                (line == exp.expect.get or # as long as it matches in some sense
-                 line.startsWith(exp.expect.get) or
-                 line.endsWith(exp.expect.get)))):
-            inStream.write(exp.send & "\n")
-            inStream.flush()
-            exp = if expects.len > 0: expects.pop else: initExpect(init = false)
-        else:
-          # should mean stream is finished, i.e. process stoped
-          sleep 10
-          doAssert not pid.running
-          break
-      except IOError, OSError:
-        # outstream died on us?
-        doAssert outStream.isNil
-        break
-
-    if not outStream.atEnd():
-      if dokOutput in debugConfig:
-        let rem = outStream.readAll()
-        res &= rem
-        for line in rem.split("\n"):
-          echo "shell> ", line
-      else:
-        res &= outStream.readAll()
-
-    if exp.init: # if `exp` is still initialized, it means it wasn't consumed
-      expects.insert(exp, 0)
-
-    let exitCode = pid.peekExitCode
-
-    # Zero exit code does not guarantee that there will be nothing in
-    # stderr.
-    let err = pid.errorStream
-    let errorText = err.readAll()
-
-    if exitCode != 0:
-      if dokRuntime in debugConfig:
-        echo "Error when executing: ", cmd
-
-      if dokError in debugConfig:
-        for line in errorText.split("\n"):
-          echo "err> ", line
-
-    pid.close()
-    result = (output: res, error: errorText, exitCode: exitCode)
-
+  when nimvm:
+    block:
+      # prepend the NimScript called command by current directory
+      let nscmd = &"cd {getProjectPath()} && {cmd}"
+      let (res, code) = gorgeEx(nscmd, "", "")
+      result.output = res
+      result.exitCode = code
   else:
-    # prepend the NimScript called command by current directory
-    let nscmd = &"cd {getCurrentDir()} && " & cmd
-    let (res, code) = gorgeEx(nscmd, "", "")
-    result.output = res
-    result.exitCode = code
+    when not defined(NimScript):
+      when defined(windows):
+        var pid: Process
+        try:
+          pid = startProcess(cmd, options = options)
+        except OSError as e:
+          let exitCode = 1
+          let err = e.msg
+          return (output: "", error: err, exitCode: exitCode)
+      else:
+        let pid = startProcess(cmd, options = options)
+
+      let outStream = pid.outputStream
+      let inStream = pid.inputStream
+      var line = ""
+      var res = ""
+      var exp = if expects.len > 0: expects.pop else: initExpect(init = false)
+      while pid.running:
+        try:
+          let streamRes = outStream.readLine(line)
+          if streamRes:
+            if dokOutput in debugConfig:
+              echo "shell> ", line
+            res = res & "\n" & line
+            # now check if we expect a line and this line matches
+            if exp.init and                  # if any
+               (exp.expect.isNone or         # either if we don't expect, just `send`
+                (exp.expect.isSome and       # or if expect text
+                  (line == exp.expect.get or # as long as it matches in some sense
+                   line.startsWith(exp.expect.get) or
+                   line.endsWith(exp.expect.get)))):
+              inStream.write(exp.send & "\n")
+              inStream.flush()
+              exp = if expects.len > 0: expects.pop else: initExpect(init = false)
+          else:
+            # should mean stream is finished, i.e. process stoped
+            sleep 10
+            doAssert not pid.running
+            break
+        except IOError, OSError:
+          # outstream died on us?
+          doAssert outStream.isNil
+          break
+
+      if not outStream.atEnd():
+        if dokOutput in debugConfig:
+          let rem = outStream.readAll()
+          res &= rem
+          for line in rem.split("\n"):
+            echo "shell> ", line
+        else:
+          res &= outStream.readAll()
+
+      if exp.init: # if `exp` is still initialized, it means it wasn't consumed
+        expects.insert(exp, 0)
+
+      let exitCode = pid.peekExitCode
+
+      # Zero exit code does not guarantee that there will be nothing in
+      # stderr.
+      let err = pid.errorStream
+      let errorText = err.readAll()
+
+      if exitCode != 0:
+        if dokRuntime in debugConfig:
+          echo "Error when executing: ", cmd
+
+        if dokError in debugConfig:
+          for line in errorText.split("\n"):
+            echo "err> ", line
+
+      pid.close()
+      result = (output: res, error: errorText, exitCode: exitCode)
+
+    else:
+      # prepend the NimScript called command by current directory
+      let nscmd = &"cd {nimscript.getCurrentDir()} && " & cmd
+      let (res, code) = gorgeEx(nscmd, "", "")
+      result.output = res
+      result.exitCode = code
   result.output = result.output.strip(chars = {'\n'})
   result.error = result.error.strip(chars = {'\n'})
 
@@ -400,18 +408,22 @@ proc execShell*(
   if dokCommand in debugConfig:
     echo "shellCmd: ", cmd
 
-  let cwd = getCurrentDir()
   result = asgnShell(cmd, expects, debugConfig, options)
-
   if dokOutput in debugConfig:
-    when defined(NimScript):
-      # output of child process is already echoed on the fly for non NimScript
-      # usage
+    when nimvm:
       if result[0].len > 0:
         for line in splitLines(result[0]):
           echo "shell> ", line
+    else:
+      when defined(NimScript):
+        # output of child process is already echoed on the fly for non NimScript
+        # usage
+        if result[0].len > 0:
+          for line in splitLines(result[0]):
+            echo "shell> ", line
 
   when defined shellThrowException:
+    let cwd = getCurrentDir()
     if result.exitCode != 0:
       raise ShellExecError(
         msg: "Command " & cmd & " exited with non-zero code",
@@ -770,12 +782,16 @@ macro checkShell*(cmds: untyped, exp: untyped): untyped =
 
   if exp.kind == nnkStmtList:
     let checkCommand = nilOrQuote(shCmds[0])
-    when not defined(NimScript):
-      result = quote do:
-        check `checkCommand` == `exp[0]`
-    else:
+    when nimvm:
       result = quote do:
         doAssert `checkCommand` == `exp[0]`
+    else:
+      when not defined(NimScript):
+        result = quote do:
+          check `checkCommand` == `exp[0]`
+      else:
+        result = quote do:
+          doAssert `checkCommand` == `exp[0]`
   when defined(debugShell):
     echo result.repr
 
