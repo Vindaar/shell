@@ -360,10 +360,14 @@ assert res == "8\n9\n10"
 #+END_SRC
 
 
-** NimScript
+** NimScript & Nim compile time (~nimvm~)
 
-This macro can also be used in NimScript! Instead of =execCmdEx= the
-=nimscript.exec= is used.
+This macro can also be used in NimScript as well as at regular Nim
+compile time (i.e. in ~nimvm~ contexts). It uses ~gorgeEx~ in this
+case. Some features may not work perfectly. Instead of using the
+current working directory, it always starts at the path of the current
+project being compiled! So you may need to prepend your own ~cd <foo>~
+depending on where you need to run your commands.
 
 ** Known issues
 
