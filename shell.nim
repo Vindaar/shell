@@ -390,7 +390,7 @@ proc asgnShell*(
 
     else:
       # prepend the NimScript called command by current directory
-      let nscmd = &"cd {nimscript.getCurrentDir()} && " & cmd
+      let nscmd = &"cd {getCurrentDir()} && " & cmd
       let (res, code) = gorgeEx(nscmd, "", "")
       result.output = res
       result.exitCode = code
