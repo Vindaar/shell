@@ -1,3 +1,5 @@
+* v0.5.2
+- add preliminary support for ~shell~ in macros (i.e. in ~nimvm~ contexts)
 * v0.5.1
 - ~send~ can now be used without an explicit ~expect~
 * v0.5.0
