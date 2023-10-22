@@ -607,6 +607,7 @@ proc parseShellVerboseArgs(combineOutAndErrDefault: bool,
     case arg.kind
     of nnkExprEqExpr:
       let argStr = arg[0].strVal
+      const allowedArgs = ["debug", "debugConfig", "options", "processOptions", "combineOutAndErr"]
       case argStr
       of "debug", "debugConfig":
         cfgArg = parseDebugConfig(arg[1])
@@ -614,6 +615,8 @@ proc parseShellVerboseArgs(combineOutAndErrDefault: bool,
         optArg = parseProcessOptions(arg[1])
       of "combineOutAndErr":
         combineOutAndErr = parseCombineAndErr(arg[1])
+      else:
+        error("Invalid named argument to `shellVerbose`: " & $argStr & ". Allowed arguments: " & $allowedArgs)
     of nnkCurly:
       if idx == 0:
         cfgArg = parseDebugConfig(arg)
