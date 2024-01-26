@@ -784,6 +784,21 @@ macro shellEcho*(cmds: untyped): untyped =
     result.add quote do:
       echo `qCmd`
 
+macro shellCmd*(cmds: untyped): untyped =
+  ## a helper macro around the proc that generates the shell commands
+  ## to get the generated command as a runtime string.
+  expectKind cmds, nnkStmtList
+  let shCmds = genShellCmds(cmds)
+  doAssert shCmds.len == 1, "Can only handle a single command at this time"
+  var res = ""
+  #for cmd in shCmds:
+  #  let qCmd = nilOrQuote(cmd)
+  #  # echo representation at compile time
+  #  echo qCmd.repr
+  #  # and echo
+  #  res.add qCmd.str
+  result = nilOrQuote(shCmds[0])
+
 macro checkShell*(cmds: untyped, exp: untyped): untyped =
   ## a wrapper around the shell macro, which can calls `unittest.check` to
   ## check whether construction of the commands works as expected
