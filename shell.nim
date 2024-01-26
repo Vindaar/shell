@@ -298,6 +298,13 @@ proc concatCmds(cmd: ShellCmd, sep = " && "): string =
   ## concat commands to single string, by default via `&&`
   result = cmd.cmds.join(sep)
 
+proc getPrompt(pid: int): string =
+  const PrintPid {.booldefine.} = true
+  when PrintPid:
+    result = "shell " & $pid & "> "
+  else:
+    result = "shell> "
+
 proc asgnShell*(
   cmd: string,
   expects: var seq[Expect],
@@ -316,27 +323,28 @@ proc asgnShell*(
   else:
     when not defined(NimScript):
       when defined(windows):
-        var pid: Process
+        var prcs: Process
         try:
-          pid = startProcess(cmd, options = options)
+          prcs = startProcess(cmd, options = options)
         except OSError as e:
           let exitCode = 1
           let err = e.msg
           return (output: "", error: err, exitCode: exitCode)
       else:
-        let pid = startProcess(cmd, options = options)
+        let prcs = startProcess(cmd, options = options)
 
-      let outStream = pid.outputStream
-      let inStream = pid.inputStream
+      let pid = prcs.processId
+      let outStream = prcs.outputStream
+      let inStream = prcs.inputStream
       var line = ""
       var res = ""
       var exp = if expects.len > 0: expects.pop else: initExpect(init = false)
-      while pid.running:
+      while prcs.running:
         try:
           let streamRes = outStream.readLine(line)
           if streamRes:
             if dokOutput in debugConfig:
-              echo "shell> ", line
+              echo getPrompt(pid), line
             res = res & "\n" & line
             # now check if we expect a line and this line matches
             if exp.init and                  # if any
@@ -351,7 +359,7 @@ proc asgnShell*(
           else:
             # should mean stream is finished, i.e. process stoped
             sleep 10
-            doAssert not pid.running
+            doAssert not prcs.running
             break
         except IOError, OSError:
           # outstream died on us?
@@ -363,18 +371,18 @@ proc asgnShell*(
           let rem = outStream.readAll()
           res &= rem
           for line in rem.split("\n"):
-            echo "shell> ", line
+            echo getPrompt(pid), line
         else:
           res &= outStream.readAll()
 
       if exp.init: # if `exp` is still initialized, it means it wasn't consumed
         expects.insert(exp, 0)
 
-      let exitCode = pid.peekExitCode
+      let exitCode = prcs.peekExitCode
 
       # Zero exit code does not guarantee that there will be nothing in
       # stderr.
-      let err = pid.errorStream
+      let err = prcs.errorStream
       let errorText = err.readAll()
 
       if exitCode != 0:
@@ -385,7 +393,7 @@ proc asgnShell*(
           for line in errorText.split("\n"):
             echo "err> ", line
 
-      pid.close()
+      prcs.close()
       result = (output: res, error: errorText, exitCode: exitCode)
 
     else:
