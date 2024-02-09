@@ -1,6 +1,6 @@
 # Package
 
-version       = "0.5.2"
+version       = "0.6.0"
 author        = "Vindaar"
 description   = "A Nim mini DSL to execute shell commands"
 license       = "MIT"

@@ -1,3 +1,6 @@
+* v0.6.0
+- print process ID for the spawned process by default. Can be disabled
+  by compiling with ~-d:PrintPid=false~.
 * v0.5.2
 - add preliminary support for ~shell~ in macros (i.e. in ~nimvm~ contexts)
 * v0.5.1
